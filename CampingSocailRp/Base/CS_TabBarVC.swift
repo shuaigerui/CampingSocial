@@ -18,6 +18,10 @@ class CS_TabBarVC: UITabBarController {
     }
 
     var onAddTapped: (() -> Void)?
+    var onPhotoTapped: (() -> Void)?
+    var onVideoTapped: (() -> Void)?
+
+    private var isAddMenuVisible = false
 
     /// 独立容器，始终叠在子页面之上，保证 Tab 可点击
     private let tabBarContainer: UIView = {
@@ -28,6 +32,25 @@ class CS_TabBarVC: UITabBarController {
     }()
 
     private let customTabBar = CS_CustomTabBar()
+
+    private lazy var addMenuView: CS_AddMenuView = {
+        let v = CS_AddMenuView()
+        v.isHidden = true
+        v.onDismiss = { [weak self] in
+            self?.hideAddMenu()
+        }
+        v.onPhotoTapped = { [weak self] in
+            self?.hideAddMenu {
+                self?.onPhotoTapped?()
+            }
+        }
+        v.onVideoTapped = { [weak self] in
+            self?.hideAddMenu {
+                self?.onVideoTapped?()
+            }
+        }
+        return v
+    }()
 
     private lazy var addButton: UIButton = {
         let btn = UIButton(type: .custom)
@@ -41,6 +64,7 @@ class CS_TabBarVC: UITabBarController {
         tabBar.isHidden = true
         setupViewControllers()
         setupCustomTabBar()
+        setupAddMenu()
         selectTab(at: Tab.home.rawValue, animated: false)
     }
 
@@ -48,12 +72,12 @@ class CS_TabBarVC: UITabBarController {
         super.viewDidLayoutSubviews()
         updateContentInsets()
         layoutTabBarContainer()
-        bringTabBarToFront()
+        bringChromeToFront()
     }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        bringTabBarToFront()
+        bringChromeToFront()
     }
 
     private func setupViewControllers() {
@@ -84,7 +108,15 @@ class CS_TabBarVC: UITabBarController {
         }
 
         customTabBar.onTabSelected = { [weak self] index in
+            self?.hideAddMenu()
             self?.selectTab(at: index, animated: true)
+        }
+    }
+
+    private func setupAddMenu() {
+        view.addSubview(addMenuView)
+        addMenuView.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
         }
     }
 
@@ -99,15 +131,17 @@ class CS_TabBarVC: UITabBarController {
         }
     }
 
-    /// 子页面 TransitionView 会盖住 TabBar，必须插到它上面
-    private func bringTabBarToFront() {
+    /// 子页面 TransitionView 会盖住 TabBar；Add 菜单在内容之上、TabBar 之下
+    private func bringChromeToFront() {
         guard let transitionView = view.subviews.first(where: {
             String(describing: type(of: $0)).contains("Transition")
         }) else {
+            view.bringSubviewToFront(addMenuView)
             view.bringSubviewToFront(tabBarContainer)
             return
         }
-        view.insertSubview(tabBarContainer, aboveSubview: transitionView)
+        view.insertSubview(addMenuView, aboveSubview: transitionView)
+        view.insertSubview(tabBarContainer, aboveSubview: addMenuView)
     }
 
     private func updateContentInsets() {
@@ -125,7 +159,7 @@ class CS_TabBarVC: UITabBarController {
         guard let vcs = viewControllers, index < vcs.count else { return }
         selectedIndex = index
         customTabBar.setSelectedIndex(index)
-        bringTabBarToFront()
+        bringChromeToFront()
     }
 
     private func wrap(_ root: UIViewController) -> UINavigationController {
@@ -135,6 +169,28 @@ class CS_TabBarVC: UITabBarController {
     }
 
     @objc private func addButtonTapped() {
+        if isAddMenuVisible {
+            hideAddMenu()
+        } else {
+            showAddMenu()
+        }
+    }
+
+    private func showAddMenu() {
+        isAddMenuVisible = true
+        bringChromeToFront()
+        addMenuView.show()
         onAddTapped?()
+    }
+
+    private func hideAddMenu(completion: (() -> Void)? = nil) {
+        guard isAddMenuVisible else {
+            completion?()
+            return
+        }
+        isAddMenuVisible = false
+        addMenuView.hide {
+            completion?()
+        }
     }
 }
