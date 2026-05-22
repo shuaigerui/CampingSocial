@@ -30,12 +30,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     private func initializeWindow() {
 
         window = UIWindow(frame: UIScreen.main.bounds)
-
-
-        let welcome = CS_WelcomeVC()
-        let nav = UINavigationController(rootViewController: welcome)
-        nav.setNavigationBarHidden(true, animated: false)
-        window?.rootViewController = nav
+        window?.rootViewController = CS_TabBarVC()
         window?.makeKeyAndVisible()
     }
 }

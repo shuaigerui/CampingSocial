@@ -1,0 +1,187 @@
+//
+//  CS_DiscoverFeedCell.swift
+//  CampingSocailRp
+//
+//  Created by  mac on 2026/5/22.
+//
+
+import UIKit
+
+final class CS_DiscoverFeedCell: UITableViewCell {
+
+    static let reuseID = "CS_DiscoverFeedCell"
+
+    var onFollowTapped: (() -> Void)?
+    var onCollectTapped: (() -> Void)?
+    var onReportTapped: (() -> Void)?
+    var onPlayTapped: (() -> Void)?
+
+    private let cardView: UIView = {
+        let v = UIView()
+        v.backgroundColor = UIColor(hex: "#E9EDC8")
+        v.layer.cornerRadius = 16
+        v.clipsToBounds = true
+        return v
+    }()
+
+    private let coverImageView: UIImageView = {
+        let v = UIImageView()
+        v.contentMode = .scaleAspectFill
+        v.clipsToBounds = true
+        v.backgroundColor = UIColor(hex: "#C5D4B0")
+        return v
+    }()
+
+    private lazy var playButton: UIButton = {
+        let btn = UIButton(type: .custom)
+        btn.setImage("discover_play".toImage, for: .normal)
+        btn.addTarget(self, action: #selector(playTapped), for: .touchUpInside)
+        return btn
+    }()
+
+    private lazy var followButton: UIButton = {
+        let btn = UIButton(type: .custom)
+        btn.imageView?.contentMode = .scaleAspectFit
+        btn.contentHorizontalAlignment = .fill
+        btn.contentVerticalAlignment = .fill
+        btn.addTarget(self, action: #selector(followTapped), for: .touchUpInside)
+        return btn
+    }()
+
+    private lazy var reportButton: UIButton = {
+        let btn = UIButton(type: .custom)
+        btn.setImage("home_report".toImage, for: .normal)
+        btn.addTarget(self, action: #selector(reportTapped), for: .touchUpInside)
+        return btn
+    }()
+
+    private let contentLabel: UILabel = {
+        let v = UILabel()
+        v.font = .systemFont(ofSize: 14)
+        v.textColor = UIColor(hex: "#4A3F35")
+        v.numberOfLines = 0
+        return v
+    }()
+
+    private let avatarView: UIImageView = {
+        let v = UIImageView()
+        v.backgroundColor = UIColor(hex: "#D4C4A8")
+        v.layer.cornerRadius = 14
+        v.clipsToBounds = true
+        v.contentMode = .scaleAspectFill
+        return v
+    }()
+
+    private let userNameLabel: UILabel = {
+        let v = UILabel()
+        v.font = .systemFont(ofSize: 13, weight: .bold)
+        v.textColor = UIColor(hex: "#4A3F35")
+        return v
+    }()
+
+    private lazy var collectButton: UIButton = {
+        let btn = UIButton(type: .custom)
+        btn.addTarget(self, action: #selector(collectTapped), for: .touchUpInside)
+        return btn
+    }()
+
+    override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
+        super.init(style: style, reuseIdentifier: reuseIdentifier)
+        setupUI()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    private func setupUI() {
+        selectionStyle = .none
+        backgroundColor = .clear
+        contentView.backgroundColor = .clear
+
+        contentView.addSubview(cardView)
+        cardView.addSubview(coverImageView)
+        cardView.addSubview(playButton)
+        cardView.addSubview(followButton)
+        cardView.addSubview(reportButton)
+        cardView.addSubview(contentLabel)
+        cardView.addSubview(avatarView)
+        cardView.addSubview(userNameLabel)
+        cardView.addSubview(collectButton)
+
+        cardView.snp.makeConstraints { make in
+            make.left.right.equalToSuperview().inset(16)
+            make.top.equalToSuperview().offset(8)
+            make.bottom.equalToSuperview().offset(-8)
+        }
+
+        coverImageView.snp.makeConstraints { make in
+            make.top.left.right.equalToSuperview()
+            make.height.equalTo(220)
+        }
+
+        playButton.snp.makeConstraints { make in
+            make.top.left.equalTo(coverImageView).offset(12)
+            make.width.height.equalTo(40)
+        }
+
+        reportButton.snp.makeConstraints { make in
+            make.top.equalTo(coverImageView).offset(12)
+            make.right.equalTo(coverImageView).offset(-12)
+            make.width.height.equalTo(20)
+        }
+
+        followButton.snp.makeConstraints { make in
+            make.centerY.equalTo(reportButton)
+            make.right.equalTo(reportButton.snp.left).offset(-8)
+            make.width.equalTo(70)
+            make.height.equalTo(27)
+        }
+
+        contentLabel.snp.makeConstraints { make in
+            make.top.equalTo(coverImageView.snp.bottom).offset(12)
+            make.left.right.equalToSuperview().inset(12)
+        }
+
+        avatarView.snp.makeConstraints { make in
+            make.top.equalTo(contentLabel.snp.bottom).offset(12)
+            make.left.equalToSuperview().offset(12)
+            make.width.height.equalTo(28)
+            make.bottom.equalToSuperview().offset(-12)
+        }
+
+        userNameLabel.snp.makeConstraints { make in
+            make.centerY.equalTo(avatarView)
+            make.left.equalTo(avatarView.snp.right).offset(8)
+        }
+
+        collectButton.snp.makeConstraints { make in
+            make.centerY.equalTo(avatarView)
+            make.right.equalToSuperview().offset(-12)
+            make.width.height.equalTo(24)
+        }
+    }
+
+    func configure(with item: CS_DiscoverFeedItem) {
+        coverImageView.image = item.coverImageName.toImage
+        contentLabel.text = item.content
+        userNameLabel.text = item.userName.uppercased()
+        updateFollowButton(isFollowing: item.isFollowing)
+        updateCollectButton(isCollected: item.isCollected)
+    }
+
+    private func updateFollowButton(isFollowing: Bool) {
+        let name = isFollowing ? "home_following" : "home_follow"
+        followButton.setImage(name.toImage, for: .normal)
+    }
+
+    private func updateCollectButton(isCollected: Bool) {
+        let name = isCollected ? "home_collected" : "home_collect"
+        collectButton.setImage(name.toImage, for: .normal)
+    }
+
+    @objc private func followTapped() { onFollowTapped?() }
+    @objc private func collectTapped() { onCollectTapped?() }
+    @objc private func reportTapped() { onReportTapped?() }
+    @objc private func playTapped() { onPlayTapped?() }
+}
