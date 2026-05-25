@@ -49,7 +49,7 @@ class CS_SettingVC: CS_BaseVC {
 
     private let panelView: UIView = {
         let v = UIView()
-        v.backgroundColor = UIColor(hex: "#F9F1C1")
+        v.backgroundColor = UIColor(hex: "#F3F7BB").withAlphaComponent(0.5)
         v.layer.cornerRadius = 24
         v.clipsToBounds = true
         return v

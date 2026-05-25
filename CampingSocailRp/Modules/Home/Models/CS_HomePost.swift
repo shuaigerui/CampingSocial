@@ -16,5 +16,10 @@ struct CS_HomePost {
     var isFollowing: Bool
     var isLiked: Bool
     var isCollected: Bool
+    /// 占位色块（无本地图时使用）
     let imageColors: [UIColor]
+    /// 本地图片路径或 Assets 名
+    let imagePaths: [String]
+    /// 头像：Bundle 路径或 Assets 名
+    let avatarPath: String?
 }

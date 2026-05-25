@@ -1,25 +1,24 @@
 //
-//  CS_HomePostCell.swift
+//  CS_PostDetailPostCell.swift
 //  CampingSocailRp
 //
-//  Created by  mac on 2026/5/22.
+//  Created by  mac on 2026/5/25.
 //
 
 import UIKit
 
-final class CS_HomePostCell: UITableViewCell {
+final class CS_PostDetailPostCell: UITableViewCell {
 
-    static let reuseID = "CS_HomePostCell"
+    static let reuseID = "CS_PostDetailPostCell"
 
     var onFollowTapped: (() -> Void)?
     var onLikeTapped: (() -> Void)?
     var onCollectTapped: (() -> Void)?
     var onReportTapped: (() -> Void)?
-    var onDeleteTapped: (() -> Void)?
 
     private let cardView: UIView = {
         let v = UIView()
-        v.backgroundColor = UIColor(hex: "#F9F1C1")
+        v.backgroundColor = UIColor(hex: "#FFF6D6")
         v.layer.cornerRadius = 16
         v.clipsToBounds = true
         return v
@@ -31,6 +30,9 @@ final class CS_HomePostCell: UITableViewCell {
         v.layer.cornerRadius = 20
         v.clipsToBounds = true
         v.contentMode = .scaleAspectFill
+        if let avatar = "info_avatar".toImage {
+            v.image = avatar
+        }
         return v
     }()
 
@@ -50,9 +52,9 @@ final class CS_HomePostCell: UITableViewCell {
 
     private lazy var followButton: UIButton = {
         let btn = UIButton(type: .custom)
-        btn.imageView?.contentMode = .scaleAspectFit
         btn.contentHorizontalAlignment = .fill
         btn.contentVerticalAlignment = .fill
+        btn.imageView?.contentMode = .scaleAspectFit
         btn.addTarget(self, action: #selector(followTapped), for: .touchUpInside)
         return btn
     }()
@@ -64,14 +66,6 @@ final class CS_HomePostCell: UITableViewCell {
         return btn
     }()
 
-    private lazy var deleteButton: UIButton = {
-        let btn = UIButton(type: .custom)
-        btn.setImage("profile_del".toImage, for: .normal)
-        btn.isHidden = true
-        btn.addTarget(self, action: #selector(deleteTapped), for: .touchUpInside)
-        return btn
-    }()
-
     private let contentLabel: UILabel = {
         let v = UILabel()
         v.font = .systemFont(ofSize: 14)
@@ -80,23 +74,13 @@ final class CS_HomePostCell: UITableViewCell {
         return v
     }()
 
-    private let imagesStack: UIStackView = {
-        let stack = UIStackView()
-        stack.axis = .horizontal
-        stack.spacing = 8
-        stack.distribution = .fillEqually
-        return stack
-    }()
-
-    private var imageViews: [UIImageView] = []
-
-    private lazy var likeButton = makeActionButton(action: #selector(likeTapped))
+    private lazy var likeButton = makeIconButton(action: #selector(likeTapped))
     private lazy var commentButton: UIButton = {
-        let btn = makeActionButton(action: #selector(commentTapped))
+        let btn = makeIconButton(action: #selector(commentTapped))
         btn.setImage("home_commit".toImage, for: .normal)
         return btn
     }()
-    private lazy var collectButton = makeActionButton(action: #selector(collectTapped))
+    private lazy var collectButton = makeIconButton(action: #selector(collectTapped))
 
     private let likeCountLabel = makeCountLabel()
     private let commentCountLabel = makeCountLabel()
@@ -129,20 +113,8 @@ final class CS_HomePostCell: UITableViewCell {
         cardView.addSubview(timeLabel)
         cardView.addSubview(followButton)
         cardView.addSubview(reportButton)
-        cardView.addSubview(deleteButton)
         cardView.addSubview(contentLabel)
-        cardView.addSubview(imagesStack)
         cardView.addSubview(actionStack)
-
-        for _ in 0..<3 {
-            let iv = UIImageView()
-            iv.backgroundColor = UIColor(hex: "#E8DFC8")
-            iv.layer.cornerRadius = 10
-            iv.clipsToBounds = true
-            iv.contentMode = .scaleAspectFill
-            imagesStack.addArrangedSubview(iv)
-            imageViews.append(iv)
-        }
 
         let likeWrap = makeActionWrap(button: likeButton, label: likeCountLabel)
         let commentWrap = makeActionWrap(button: commentButton, label: commentCountLabel)
@@ -154,7 +126,7 @@ final class CS_HomePostCell: UITableViewCell {
 
         cardView.snp.makeConstraints { make in
             make.left.right.equalToSuperview().inset(16)
-            make.top.equalToSuperview().offset(8)
+            make.top.equalToSuperview().offset(4)
             make.bottom.equalToSuperview().offset(-8)
         }
 
@@ -180,12 +152,6 @@ final class CS_HomePostCell: UITableViewCell {
             make.width.height.equalTo(20)
         }
 
-        deleteButton.snp.makeConstraints { make in
-            make.centerY.equalTo(avatarView)
-            make.right.equalToSuperview().offset(-12)
-            make.width.height.equalTo(24)
-        }
-
         followButton.snp.makeConstraints { make in
             make.centerY.equalTo(avatarView)
             make.right.equalTo(reportButton.snp.left).offset(-8)
@@ -198,14 +164,8 @@ final class CS_HomePostCell: UITableViewCell {
             make.left.right.equalToSuperview().inset(12)
         }
 
-        imagesStack.snp.makeConstraints { make in
-            make.top.equalTo(contentLabel.snp.bottom).offset(12)
-            make.left.right.equalToSuperview().inset(12)
-            make.height.equalTo(105)
-        }
-
         actionStack.snp.makeConstraints { make in
-            make.top.equalTo(imagesStack.snp.bottom).offset(12)
+            make.top.equalTo(contentLabel.snp.bottom).offset(12)
             make.left.equalToSuperview().offset(12)
             make.right.lessThanOrEqualToSuperview().offset(-12)
             make.bottom.equalToSuperview().offset(-12)
@@ -218,7 +178,7 @@ final class CS_HomePostCell: UITableViewCell {
         }
     }
 
-    func configure(with post: CS_HomePost, showsDelete: Bool = false) {
+    func configure(with post: CS_HomePost) {
         nameLabel.text = post.userName
         timeLabel.text = post.time
         contentLabel.text = post.content
@@ -227,48 +187,6 @@ final class CS_HomePostCell: UITableViewCell {
         updateFollowButton(isFollowing: post.isFollowing)
         updateLikeButton(isLiked: post.isLiked)
         updateCollectButton(isCollected: post.isCollected)
-
-        if let avatarPath = post.avatarPath {
-            avatarView.image = avatarPath.resourceFileImage ?? avatarPath.toImage
-            avatarView.backgroundColor = avatarView.image == nil
-                ? UIColor(hex: "#D4C4A8") : .clear
-        } else {
-            avatarView.image = nil
-            avatarView.backgroundColor = UIColor(hex: "#D4C4A8")
-        }
-
-        let paths = Array(post.imagePaths.prefix(imageViews.count))
-        if !paths.isEmpty {
-            zip(imageViews, paths).forEach { iv, path in
-                iv.image = path.resourceFileImage
-                iv.backgroundColor = iv.image == nil ? UIColor(hex: "#E8DFC8") : .clear
-            }
-            imageViews.dropFirst(paths.count).forEach {
-                $0.image = nil
-                $0.backgroundColor = UIColor(hex: "#E8DFC8")
-            }
-        } else {
-            zip(imageViews, post.imageColors).forEach { iv, color in
-                iv.image = nil
-                iv.backgroundColor = color
-            }
-        }
-        setShowsDeleteButton(showsDelete)
-    }
-
-    private func setShowsDeleteButton(_ shows: Bool) {
-        reportButton.isHidden = shows
-        deleteButton.isHidden = !shows
-        followButton.snp.remakeConstraints { make in
-            make.centerY.equalTo(avatarView)
-            make.width.equalTo(70)
-            make.height.equalTo(27)
-            if shows {
-                make.right.equalTo(deleteButton.snp.left).offset(-8)
-            } else {
-                make.right.equalTo(reportButton.snp.left).offset(-8)
-            }
-        }
     }
 
     private func updateFollowButton(isFollowing: Bool) {
@@ -293,7 +211,7 @@ final class CS_HomePostCell: UITableViewCell {
         return v
     }
 
-    private func makeActionButton(action: Selector) -> UIButton {
+    private func makeIconButton(action: Selector) -> UIButton {
         let btn = UIButton(type: .custom)
         btn.addTarget(self, action: action, for: .touchUpInside)
         return btn
@@ -311,6 +229,5 @@ final class CS_HomePostCell: UITableViewCell {
     @objc private func likeTapped() { onLikeTapped?() }
     @objc private func collectTapped() { onCollectTapped?() }
     @objc private func reportTapped() { onReportTapped?() }
-    @objc private func deleteTapped() { onDeleteTapped?() }
     @objc private func commentTapped() {}
 }

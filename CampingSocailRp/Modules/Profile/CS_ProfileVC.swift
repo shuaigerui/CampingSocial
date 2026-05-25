@@ -65,7 +65,9 @@ class CS_ProfileVC: CS_BaseVC {
                 UIColor(hex: "#C5D4B0"),
                 UIColor(hex: "#A8B89A"),
                 UIColor(hex: "#8FA67E")
-            ]
+            ],
+            imagePaths: [],
+            avatarPath: nil
         )
 
         let videoPost = CS_DiscoverFeedItem(
@@ -73,7 +75,9 @@ class CS_ProfileVC: CS_BaseVC {
             content: "Like bitternessLike bitternessLike bitternessLike bitternessLike bitterness",
             userName: "Luoluo",
             isFollowing: false,
-            isCollected: true
+            isCollected: true,
+            coverImagePath: nil,
+            videoPath: nil
         )
 
         posts = [

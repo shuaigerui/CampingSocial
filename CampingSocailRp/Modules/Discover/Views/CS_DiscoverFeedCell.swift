@@ -179,7 +179,12 @@ final class CS_DiscoverFeedCell: UITableViewCell {
     }
 
     func configure(with item: CS_DiscoverFeedItem, showsDelete: Bool = false) {
-        coverImageView.image = item.coverImageName.toImage
+        if let path = item.coverImagePath,
+           let image = path.resourceFileImage ?? path.toImage {
+            coverImageView.image = image
+        } else {
+            coverImageView.image = item.coverImageName.toImage
+        }
         contentLabel.text = item.content
         userNameLabel.text = item.userName.uppercased()
         updateFollowButton(isFollowing: item.isFollowing)

@@ -9,11 +9,11 @@ import UIKit
 
 class CS_DiscoverVC: CS_BaseVC {
 
-    private var forYouItems: [CS_DiscoverFeedItem] = []
-    private var followingItems: [CS_DiscoverFeedItem] = []
+    private var forYouItems: [CS_ProfilePostItem] = []
+    private var followingItems: [CS_ProfilePostItem] = []
     private var currentSegment = 0
 
-    private var displayItems: [CS_DiscoverFeedItem] {
+    private var displayItems: [CS_ProfilePostItem] {
         currentSegment == 0 ? forYouItems : followingItems
     }
 
@@ -27,6 +27,7 @@ class CS_DiscoverVC: CS_BaseVC {
         tv.delegate = self
         tv.estimatedRowHeight = 340
         tv.rowHeight = UITableView.automaticDimension
+        tv.register(CS_HomePostCell.self, forCellReuseIdentifier: CS_HomePostCell.reuseID)
         tv.register(CS_DiscoverFeedCell.self, forCellReuseIdentifier: CS_DiscoverFeedCell.reuseID)
         return tv
     }()
@@ -58,22 +59,55 @@ class CS_DiscoverVC: CS_BaseVC {
     }
 
     private func loadMockData() {
-        let sample = CS_DiscoverFeedItem(
+        let imagePost = CS_HomePost(
+            userName: "Luoluo",
+            time: "09:08am",
+            content: "Hiking through the clouds and mist is like stepping into another world",
+            likeCount: 125,
+            commentCount: 39,
+            isFollowing: false,
+            isLiked: false,
+            isCollected: false,
+            imageColors: [
+                UIColor(hex: "#C5D4B0"),
+                UIColor(hex: "#A8B89A"),
+                UIColor(hex: "#8FA67E")
+            ],
+            imagePaths: [],
+            avatarPath: nil
+        )
+
+        let videoPost = CS_DiscoverFeedItem(
             coverImageName: "discover",
             content: "Like bitternessLike bitternessLike bitternessLike bitternessLike bitterness",
             userName: "Luoluo",
             isFollowing: false,
-            isCollected: false
+            isCollected: false,
+            coverImagePath: nil,
+            videoPath: nil
         )
-        let sampleFollowing = CS_DiscoverFeedItem(
+
+        let videoPostFollowing = CS_DiscoverFeedItem(
             coverImageName: "discover",
             content: "Like bitternessLike bitternessLike bitternessLike bitternessLike bitterness",
             userName: "Luoluo",
             isFollowing: true,
-            isCollected: true
+            isCollected: true,
+            coverImagePath: nil,
+            videoPath: nil
         )
-        forYouItems = Array(repeating: sample, count: 4)
-        followingItems = Array(repeating: sampleFollowing, count: 2)
+
+        forYouItems = [
+            CS_ProfilePostItem(kind: .video, imagePost: nil, videoPost: videoPost),
+            CS_ProfilePostItem(kind: .image, imagePost: imagePost, videoPost: nil),
+            CS_ProfilePostItem(kind: .video, imagePost: nil, videoPost: videoPost),
+            CS_ProfilePostItem(kind: .image, imagePost: imagePost, videoPost: nil)
+        ]
+
+        followingItems = [
+            CS_ProfilePostItem(kind: .video, imagePost: nil, videoPost: videoPostFollowing),
+            CS_ProfilePostItem(kind: .image, imagePost: imagePost, videoPost: nil)
+        ]
     }
 }
 
@@ -84,45 +118,99 @@ extension CS_DiscoverVC: UITableViewDataSource, UITableViewDelegate {
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        guard let cell = tableView.dequeueReusableCell(
-            withIdentifier: CS_DiscoverFeedCell.reuseID,
-            for: indexPath
-        ) as? CS_DiscoverFeedCell else {
-            return UITableViewCell()
-        }
-
         let item = displayItems[indexPath.row]
-        cell.configure(with: item)
 
+        switch item.kind {
+        case .image:
+            guard let cell = tableView.dequeueReusableCell(
+                withIdentifier: CS_HomePostCell.reuseID,
+                for: indexPath
+            ) as? CS_HomePostCell,
+                  let post = item.imagePost else {
+                return UITableViewCell()
+            }
+            cell.configure(with: post)
+            bindImageCellActions(cell, indexPath: indexPath)
+            return cell
+
+        case .video:
+            guard let cell = tableView.dequeueReusableCell(
+                withIdentifier: CS_DiscoverFeedCell.reuseID,
+                for: indexPath
+            ) as? CS_DiscoverFeedCell,
+                  let post = item.videoPost else {
+                return UITableViewCell()
+            }
+            cell.configure(with: post)
+            bindVideoCellActions(cell, indexPath: indexPath)
+            return cell
+        }
+    }
+
+    private func bindImageCellActions(_ cell: CS_HomePostCell, indexPath: IndexPath) {
         cell.onFollowTapped = { [weak self] in
-            self?.toggleFollow(at: indexPath)
+            self?.toggleImageFollow(at: indexPath)
+        }
+        cell.onLikeTapped = { [weak self] in
+            self?.toggleImageLike(at: indexPath)
         }
         cell.onCollectTapped = { [weak self] in
-            self?.toggleCollect(at: indexPath)
+            self?.toggleImageCollect(at: indexPath)
+        }
+        cell.onReportTapped = { [weak self] in
+            self?.navigationController?.pushViewController(CS_ReportVC(), animated: true)
+        }
+    }
+
+    private func bindVideoCellActions(_ cell: CS_DiscoverFeedCell, indexPath: IndexPath) {
+        cell.onFollowTapped = { [weak self] in
+            self?.toggleVideoFollow(at: indexPath)
+        }
+        cell.onCollectTapped = { [weak self] in
+            self?.toggleVideoCollect(at: indexPath)
         }
         cell.onReportTapped = { [weak self] in
             self?.navigationController?.pushViewController(CS_ReportVC(), animated: true)
         }
         cell.onPlayTapped = {}
-
-        return cell
     }
 
-    private func toggleFollow(at indexPath: IndexPath) {
+    private func updateItem(at indexPath: IndexPath, _ transform: (inout CS_ProfilePostItem) -> Void) {
         if currentSegment == 0 {
-            forYouItems[indexPath.row].isFollowing.toggle()
+            transform(&forYouItems[indexPath.row])
         } else {
-            followingItems[indexPath.row].isFollowing.toggle()
+            transform(&followingItems[indexPath.row])
         }
         tableView.reloadRows(at: [indexPath], with: .none)
     }
 
-    private func toggleCollect(at indexPath: IndexPath) {
-        if currentSegment == 0 {
-            forYouItems[indexPath.row].isCollected.toggle()
-        } else {
-            followingItems[indexPath.row].isCollected.toggle()
+    private func toggleImageFollow(at indexPath: IndexPath) {
+        updateItem(at: indexPath) { item in
+            item.imagePost?.isFollowing.toggle()
         }
-        tableView.reloadRows(at: [indexPath], with: .none)
+    }
+
+    private func toggleImageLike(at indexPath: IndexPath) {
+        updateItem(at: indexPath) { item in
+            item.imagePost?.isLiked.toggle()
+        }
+    }
+
+    private func toggleImageCollect(at indexPath: IndexPath) {
+        updateItem(at: indexPath) { item in
+            item.imagePost?.isCollected.toggle()
+        }
+    }
+
+    private func toggleVideoFollow(at indexPath: IndexPath) {
+        updateItem(at: indexPath) { item in
+            item.videoPost?.isFollowing.toggle()
+        }
+    }
+
+    private func toggleVideoCollect(at indexPath: IndexPath) {
+        updateItem(at: indexPath) { item in
+            item.videoPost?.isCollected.toggle()
+        }
     }
 }

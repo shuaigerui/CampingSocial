@@ -22,6 +22,7 @@ class CS_TabBarVC: UITabBarController {
     var onVideoTapped: (() -> Void)?
 
     private var isAddMenuVisible = false
+    private var isTabBarChromeHidden = false
 
     /// 独立容器，始终叠在子页面之上，保证 Tab 可点击
     private let tabBarContainer: UIView = {
@@ -65,7 +66,22 @@ class CS_TabBarVC: UITabBarController {
         setupViewControllers()
         setupCustomTabBar()
         setupAddMenu()
+        setupPushPostHandlers()
         selectTab(at: Tab.home.rawValue, animated: false)
+    }
+
+    private func setupPushPostHandlers() {
+        onPhotoTapped = { [weak self] in
+            self?.pushPostPage(mode: .photos)
+        }
+        onVideoTapped = { [weak self] in
+            self?.pushPostPage(mode: .video)
+        }
+    }
+
+    private func pushPostPage(mode: CS_PushPostMediaMode) {
+        guard let nav = selectedViewController as? UINavigationController else { return }
+        nav.pushViewController(CS_PushPostVC(mediaMode: mode), animated: true)
     }
 
     override func viewDidLayoutSubviews() {
@@ -144,8 +160,32 @@ class CS_TabBarVC: UITabBarController {
         view.insertSubview(tabBarContainer, aboveSubview: addMenuView)
     }
 
+    /// 隐藏/显示自定义 TabBar（发帖页等全屏子页使用）
+    func setCustomTabBarHidden(_ hidden: Bool, animated: Bool = true) {
+        guard isTabBarChromeHidden != hidden else { return }
+        isTabBarChromeHidden = hidden
+        hideAddMenu()
+
+        let apply = {
+            self.tabBarContainer.isHidden = hidden
+            self.tabBarContainer.alpha = hidden ? 0 : 1
+            self.updateContentInsets()
+        }
+
+        if animated {
+            if !hidden {
+                tabBarContainer.isHidden = false
+            }
+            UIView.animate(withDuration: 0.25, animations: apply)
+        } else {
+            apply()
+        }
+    }
+
     private func updateContentInsets() {
-        let height = CS_CustomTabBar.preferredHeight(for: view.bounds.width)
+        let height = isTabBarChromeHidden
+            ? 0
+            : CS_CustomTabBar.preferredHeight(for: view.bounds.width)
         viewControllers?.forEach { vc in
             vc.additionalSafeAreaInsets.bottom = height
         }
