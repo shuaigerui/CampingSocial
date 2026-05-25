@@ -15,6 +15,7 @@ final class CS_HomePostCell: UITableViewCell {
     var onLikeTapped: (() -> Void)?
     var onCollectTapped: (() -> Void)?
     var onReportTapped: (() -> Void)?
+    var onDeleteTapped: (() -> Void)?
 
     private let cardView: UIView = {
         let v = UIView()
@@ -60,6 +61,14 @@ final class CS_HomePostCell: UITableViewCell {
         let btn = UIButton(type: .custom)
         btn.setImage("home_report".toImage, for: .normal)
         btn.addTarget(self, action: #selector(reportTapped), for: .touchUpInside)
+        return btn
+    }()
+
+    private lazy var deleteButton: UIButton = {
+        let btn = UIButton(type: .custom)
+        btn.setImage("profile_del".toImage, for: .normal)
+        btn.isHidden = true
+        btn.addTarget(self, action: #selector(deleteTapped), for: .touchUpInside)
         return btn
     }()
 
@@ -120,6 +129,7 @@ final class CS_HomePostCell: UITableViewCell {
         cardView.addSubview(timeLabel)
         cardView.addSubview(followButton)
         cardView.addSubview(reportButton)
+        cardView.addSubview(deleteButton)
         cardView.addSubview(contentLabel)
         cardView.addSubview(imagesStack)
         cardView.addSubview(actionStack)
@@ -164,17 +174,23 @@ final class CS_HomePostCell: UITableViewCell {
             make.top.equalTo(nameLabel.snp.bottom).offset(2)
         }
 
+        reportButton.snp.makeConstraints { make in
+            make.centerY.equalTo(avatarView)
+            make.right.equalToSuperview().offset(-12)
+            make.width.height.equalTo(20)
+        }
+
+        deleteButton.snp.makeConstraints { make in
+            make.centerY.equalTo(avatarView)
+            make.right.equalToSuperview().offset(-12)
+            make.width.height.equalTo(24)
+        }
+
         followButton.snp.makeConstraints { make in
             make.centerY.equalTo(avatarView)
             make.right.equalTo(reportButton.snp.left).offset(-8)
             make.width.equalTo(70)
             make.height.equalTo(27)
-        }
-
-        reportButton.snp.makeConstraints { make in
-            make.centerY.equalTo(avatarView)
-            make.right.equalToSuperview().offset(-12)
-            make.width.height.equalTo(20)
         }
 
         contentLabel.snp.makeConstraints { make in
@@ -202,7 +218,7 @@ final class CS_HomePostCell: UITableViewCell {
         }
     }
 
-    func configure(with post: CS_HomePost) {
+    func configure(with post: CS_HomePost, showsDelete: Bool = false) {
         nameLabel.text = post.userName
         timeLabel.text = post.time
         contentLabel.text = post.content
@@ -214,6 +230,22 @@ final class CS_HomePostCell: UITableViewCell {
         zip(imageViews, post.imageColors).forEach { iv, color in
             iv.image = nil
             iv.backgroundColor = color
+        }
+        setShowsDeleteButton(showsDelete)
+    }
+
+    private func setShowsDeleteButton(_ shows: Bool) {
+        reportButton.isHidden = shows
+        deleteButton.isHidden = !shows
+        followButton.snp.remakeConstraints { make in
+            make.centerY.equalTo(avatarView)
+            make.width.equalTo(70)
+            make.height.equalTo(27)
+            if shows {
+                make.right.equalTo(deleteButton.snp.left).offset(-8)
+            } else {
+                make.right.equalTo(reportButton.snp.left).offset(-8)
+            }
         }
     }
 
@@ -257,5 +289,6 @@ final class CS_HomePostCell: UITableViewCell {
     @objc private func likeTapped() { onLikeTapped?() }
     @objc private func collectTapped() { onCollectTapped?() }
     @objc private func reportTapped() { onReportTapped?() }
+    @objc private func deleteTapped() { onDeleteTapped?() }
     @objc private func commentTapped() {}
 }

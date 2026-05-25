@@ -15,6 +15,7 @@ final class CS_DiscoverFeedCell: UITableViewCell {
     var onCollectTapped: (() -> Void)?
     var onReportTapped: (() -> Void)?
     var onPlayTapped: (() -> Void)?
+    var onDeleteTapped: (() -> Void)?
 
     private let cardView: UIView = {
         let v = UIView()
@@ -52,6 +53,14 @@ final class CS_DiscoverFeedCell: UITableViewCell {
         let btn = UIButton(type: .custom)
         btn.setImage("home_report".toImage, for: .normal)
         btn.addTarget(self, action: #selector(reportTapped), for: .touchUpInside)
+        return btn
+    }()
+
+    private lazy var deleteButton: UIButton = {
+        let btn = UIButton(type: .custom)
+        btn.setImage("profile_del".toImage, for: .normal)
+        btn.isHidden = true
+        btn.addTarget(self, action: #selector(deleteTapped), for: .touchUpInside)
         return btn
     }()
 
@@ -104,6 +113,7 @@ final class CS_DiscoverFeedCell: UITableViewCell {
         cardView.addSubview(playButton)
         cardView.addSubview(followButton)
         cardView.addSubview(reportButton)
+        cardView.addSubview(deleteButton)
         cardView.addSubview(contentLabel)
         cardView.addSubview(avatarView)
         cardView.addSubview(userNameLabel)
@@ -129,6 +139,12 @@ final class CS_DiscoverFeedCell: UITableViewCell {
             make.top.equalTo(coverImageView).offset(12)
             make.right.equalTo(coverImageView).offset(-12)
             make.width.height.equalTo(20)
+        }
+
+        deleteButton.snp.makeConstraints { make in
+            make.top.equalTo(coverImageView).offset(12)
+            make.right.equalTo(coverImageView).offset(-12)
+            make.width.height.equalTo(24)
         }
 
         followButton.snp.makeConstraints { make in
@@ -162,12 +178,29 @@ final class CS_DiscoverFeedCell: UITableViewCell {
         }
     }
 
-    func configure(with item: CS_DiscoverFeedItem) {
+    func configure(with item: CS_DiscoverFeedItem, showsDelete: Bool = false) {
         coverImageView.image = item.coverImageName.toImage
         contentLabel.text = item.content
         userNameLabel.text = item.userName.uppercased()
         updateFollowButton(isFollowing: item.isFollowing)
         updateCollectButton(isCollected: item.isCollected)
+        setShowsDeleteButton(showsDelete)
+    }
+
+    private func setShowsDeleteButton(_ shows: Bool) {
+        reportButton.isHidden = shows
+        deleteButton.isHidden = !shows
+        followButton.snp.remakeConstraints { make in
+            make.width.equalTo(70)
+            make.height.equalTo(27)
+            if shows {
+                make.centerY.equalTo(deleteButton)
+                make.right.equalTo(deleteButton.snp.left).offset(-8)
+            } else {
+                make.centerY.equalTo(reportButton)
+                make.right.equalTo(reportButton.snp.left).offset(-8)
+            }
+        }
     }
 
     private func updateFollowButton(isFollowing: Bool) {
@@ -184,4 +217,5 @@ final class CS_DiscoverFeedCell: UITableViewCell {
     @objc private func collectTapped() { onCollectTapped?() }
     @objc private func reportTapped() { onReportTapped?() }
     @objc private func playTapped() { onPlayTapped?() }
+    @objc private func deleteTapped() { onDeleteTapped?() }
 }

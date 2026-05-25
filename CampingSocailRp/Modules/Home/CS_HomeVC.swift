@@ -114,7 +114,9 @@ extension CS_HomeVC: UITableViewDataSource, UITableViewDelegate {
             self?.posts[indexPath.row].isCollected.toggle()
             self?.tableView.reloadRows(at: [indexPath], with: .none)
         }
-        cell.onReportTapped = {}
+        cell.onReportTapped = { [weak self] in
+            self?.navigationController?.pushViewController(CS_ReportVC(), animated: true)
+        }
 
         return cell
     }

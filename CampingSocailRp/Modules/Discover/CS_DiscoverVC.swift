@@ -100,7 +100,9 @@ extension CS_DiscoverVC: UITableViewDataSource, UITableViewDelegate {
         cell.onCollectTapped = { [weak self] in
             self?.toggleCollect(at: indexPath)
         }
-        cell.onReportTapped = {}
+        cell.onReportTapped = { [weak self] in
+            self?.navigationController?.pushViewController(CS_ReportVC(), animated: true)
+        }
         cell.onPlayTapped = {}
 
         return cell
