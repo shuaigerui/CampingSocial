@@ -34,13 +34,7 @@ final class CS_PostDetailInputBar: UIView {
 
     private lazy var sendButton: UIButton = {
         let btn = UIButton(type: .custom)
-        btn.backgroundColor = UIColor(hex: "#FF8A3D")
-        btn.layer.cornerRadius = 22
-        btn.clipsToBounds = true
-        let config = UIImage.SymbolConfiguration(pointSize: 16, weight: .semibold)
-        let img = UIImage(systemName: "paperplane.fill", withConfiguration: config)
-        btn.setImage(img, for: .normal)
-        btn.tintColor = .white
+        btn.setImage("post_send".toImage, for: .normal)
         btn.addTarget(self, action: #selector(sendTapped), for: .touchUpInside)
         return btn
     }()
@@ -71,7 +65,8 @@ final class CS_PostDetailInputBar: UIView {
         sendButton.snp.makeConstraints { make in
             make.right.equalToSuperview().offset(-4)
             make.centerY.equalToSuperview()
-            make.width.height.equalTo(44)
+            make.width.equalTo(59)
+            make.height.equalTo(40)
         }
 
         textField.snp.makeConstraints { make in

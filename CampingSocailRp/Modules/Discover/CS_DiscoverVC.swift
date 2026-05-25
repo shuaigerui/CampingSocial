@@ -139,6 +139,12 @@ extension CS_DiscoverVC: UITableViewDataSource, UITableViewDelegate {
         cell.onReportTapped = { [weak self] in
             self?.navigationController?.pushViewController(CS_ReportVC(), animated: true)
         }
+        cell.onAvatarTapped = { [weak self] in
+            guard let self else { return }
+            let models = self.displayPostModels
+            guard indexPath.row < models.count else { return }
+            self.pushPerson(post: models[indexPath.row])
+        }
     }
 
     private func bindVideoCellActions(_ cell: CS_DiscoverFeedCell, indexPath: IndexPath) {
@@ -152,6 +158,12 @@ extension CS_DiscoverVC: UITableViewDataSource, UITableViewDelegate {
             self?.navigationController?.pushViewController(CS_ReportVC(), animated: true)
         }
         cell.onPlayTapped = {}
+        cell.onAvatarTapped = { [weak self] in
+            guard let self else { return }
+            let models = self.displayPostModels
+            guard indexPath.row < models.count else { return }
+            self.pushPerson(post: models[indexPath.row])
+        }
     }
 
     private func updateItem(at indexPath: IndexPath, _ transform: (inout CS_ProfilePostItem) -> Void) {

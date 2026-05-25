@@ -140,7 +140,63 @@ final class CS_CurrentUser {
         clearMemory()
     }
 
+    // MARK: - Profile
+
+    @discardableResult
+    func updateProfile(userName: String, signature: String, avatarURL: String?) -> Bool {
+        guard var current = user, let kind = loginKind else { return false }
+        current.userName = userName
+        current.signature = signature
+        if let avatarURL {
+            current.avatarURL = avatarURL
+        }
+        syncRegisteredUserIfNeeded(current, kind: kind)
+        return persist(user: current, kind: kind)
+    }
+
+    @discardableResult
+    func addGems(_ amount: Int) -> Bool {
+        guard amount > 0, var current = user, let kind = loginKind else { return false }
+        current.gemsCount += amount
+        syncRegisteredUserIfNeeded(current, kind: kind)
+        return persist(user: current, kind: kind)
+    }
+
+    @discardableResult
+    func publishPost(_ post: PostModel) -> Bool {
+        UserData.addUserPost(post)
+        guard var current = user, let kind = loginKind else { return true }
+        current.postCount = UserData.posts(forUserId: current.userId).count
+        syncRegisteredUserIfNeeded(current, kind: kind)
+        return persist(user: current, kind: kind)
+    }
+
+    func saveAvatarImage(_ image: UIImage) -> String? {
+        guard let userId = user?.userId else { return nil }
+        let url = Self.avatarFileURL(userId: userId)
+        guard let data = image.jpegData(compressionQuality: 0.85) else { return nil }
+        do {
+            try data.write(to: url, options: .atomic)
+            return url.path
+        } catch {
+            return nil
+        }
+    }
+
     // MARK: - Private
+
+    private func syncRegisteredUserIfNeeded(_ user: UserModel, kind: CS_LoginKind) {
+        guard kind == .email else { return }
+        var users = registeredUsers()
+        guard let index = users.firstIndex(where: { $0.userId == user.userId }) else { return }
+        users[index] = user
+        saveRegisteredUsers(users)
+    }
+
+    private static func avatarFileURL(userId: String) -> URL {
+        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        return dir.appendingPathComponent("avatar_\(userId).jpg")
+    }
 
     @discardableResult
     private func persist(user: UserModel, kind: CS_LoginKind) -> Bool {

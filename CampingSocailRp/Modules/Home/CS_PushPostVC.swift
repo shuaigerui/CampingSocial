@@ -5,6 +5,7 @@
 //  Created by  mac on 2026/5/25.
 //
 
+import Toast_Swift
 import UIKit
 import PhotosUI
 import AVFoundation
@@ -276,12 +277,103 @@ class CS_PushPostVC: CS_BaseVC {
     }
 
     @objc private func onPost() {
+        guard hasUploadedMedia() else {
+            let message = mediaMode == .photos
+                ? "Please select photos first."
+                : "Please select a video first."
+            view.makeToast(message)
+            return
+        }
+
+        let description = descriptionTextView.text
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !description.isEmpty else {
+            view.makeToast("Please enter a description first.")
+            return
+        }
+
+        guard let post = buildPostModel(content: description) else {
+            view.makeToast("Failed to publish. Please try again.")
+            return
+        }
+
+        guard CS_CurrentUser.shared.publishPost(post) else {
+            view.makeToast("Failed to publish. Please try again.")
+            return
+        }
+
         showPop(
             title: "Friendly Reminder",
             des: "Published successfully.\nIt will be reviewed shortly."
         ) { [weak self] in
             self?.navigationController?.popViewController(animated: true)
         }
+    }
+
+    private func hasUploadedMedia() -> Bool {
+        switch mediaMode {
+        case .photos:
+            if case .images(let images) = contentState {
+                return !images.isEmpty
+            }
+            return false
+        case .video:
+            if case .video(_, let url) = contentState {
+                return url != nil
+            }
+            return false
+        }
+    }
+
+    private func buildPostModel(content: String) -> PostModel? {
+        guard let user = CS_CurrentUser.shared.user else { return nil }
+
+        let postId = "user_\(UUID().uuidString)"
+        let time = Self.formatPostTime(Date())
+
+        let media: PostMedia
+        switch contentState {
+        case .images(let images):
+            let paths = UserData.savePostImages(images, postId: postId)
+            guard !paths.isEmpty else { return nil }
+            media = .images(paths)
+
+        case .video(let thumbnail, let url):
+            guard let url,
+                  let saved = UserData.savePostVideo(
+                    thumbnail: thumbnail,
+                    videoURL: url,
+                    postId: postId
+                  ) else { return nil }
+            media = .video(coverURL: saved.coverPath, videoURL: saved.videoPath)
+
+        case .empty:
+            return nil
+        }
+
+        return PostModel(
+            postId: postId,
+            userId: user.userId,
+            userName: user.userName,
+            avatarURL: user.avatarURL,
+            time: time,
+            content: content,
+            media: media,
+            likeCount: 0,
+            commentCount: 0,
+            comments: [],
+            isFollowing: false,
+            isLiked: false,
+            isCollected: false,
+            isReport: false
+        )
+    }
+
+    private static func formatPostTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "hh:mma"
+        return formatter.string(from: date).lowercased()
     }
 }
 

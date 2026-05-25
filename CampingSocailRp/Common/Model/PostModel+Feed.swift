@@ -62,6 +62,6 @@ extension PostModel {
 extension PostCommentModel {
 
     func toPostComment() -> CS_PostComment {
-        CS_PostComment(content: content, avatarImageName: avatarURL)
+        CS_PostComment(content: content, userId: userId, avatarImageName: avatarURL)
     }
 }

@@ -64,7 +64,12 @@ class CS_ProfileVC: CS_BaseVC {
         headerView.onSettingsTapped = { [weak self] in
             self?.navigationController?.pushViewController(CS_SettingVC(), animated: true)
         }
-        headerView.onEditAvatarTapped = {}
+        headerView.onEditAvatarTapped = { [weak self] in
+            self?.navigationController?.pushViewController(CS_EditVC(), animated: true)
+        }
+        headerView.onGemCardTapped = { [weak self] in
+            self?.navigationController?.pushViewController(CS_RechargeVC(), animated: true)
+        }
     }
 
 }

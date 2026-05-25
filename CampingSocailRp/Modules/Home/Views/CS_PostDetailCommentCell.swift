@@ -11,6 +11,8 @@ final class CS_PostDetailCommentCell: UITableViewCell {
 
     static let reuseID = "CS_PostDetailCommentCell"
 
+    var onAvatarTapped: (() -> Void)?
+
     private let cardView: UIView = {
         let v = UIView()
         v.backgroundColor = UIColor(hex: "#F3F7BB").withAlphaComponent(0.5)
@@ -25,6 +27,7 @@ final class CS_PostDetailCommentCell: UITableViewCell {
         v.layer.cornerRadius = 18
         v.clipsToBounds = true
         v.contentMode = .scaleAspectFill
+        v.isUserInteractionEnabled = true
         return v
     }()
 
@@ -49,6 +52,9 @@ final class CS_PostDetailCommentCell: UITableViewCell {
         selectionStyle = .none
         backgroundColor = .clear
         contentView.backgroundColor = .clear
+
+        let avatarTap = UITapGestureRecognizer(target: self, action: #selector(avatarTapped))
+        avatarView.addGestureRecognizer(avatarTap)
 
         contentView.addSubview(cardView)
         cardView.addSubview(avatarView)
@@ -85,5 +91,9 @@ final class CS_PostDetailCommentCell: UITableViewCell {
             avatarView.image = nil
             avatarView.backgroundColor = UIColor(hex: "#D4C4A8")
         }
+    }
+
+    @objc private func avatarTapped() {
+        onAvatarTapped?()
     }
 }

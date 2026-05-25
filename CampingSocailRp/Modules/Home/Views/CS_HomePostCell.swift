@@ -22,6 +22,7 @@ final class CS_HomePostCell: UITableViewCell {
     var onCollectTapped: (() -> Void)?
     var onReportTapped: (() -> Void)?
     var onDeleteTapped: (() -> Void)?
+    var onAvatarTapped: (() -> Void)?
 
     private var imagePaths: [String] = []
     private var placeholderColors: [UIColor] = []
@@ -40,6 +41,7 @@ final class CS_HomePostCell: UITableViewCell {
         v.layer.cornerRadius = 20
         v.clipsToBounds = true
         v.contentMode = .scaleAspectFill
+        v.isUserInteractionEnabled = true
         return v
     }()
 
@@ -164,6 +166,9 @@ final class CS_HomePostCell: UITableViewCell {
 
         let reportTap = UITapGestureRecognizer(target: self, action: #selector(reportTapped))
         reportContainer.addGestureRecognizer(reportTap)
+
+        let avatarTap = UITapGestureRecognizer(target: self, action: #selector(avatarTapped))
+        avatarView.addGestureRecognizer(avatarTap)
 
         reportContainer.addSubview(reportImageView)
 
@@ -342,6 +347,7 @@ final class CS_HomePostCell: UITableViewCell {
         return stack
     }
 
+    @objc private func avatarTapped() { onAvatarTapped?() }
     @objc private func followTapped() { onFollowTapped?() }
     @objc private func likeTapped() { onLikeTapped?() }
     @objc private func collectTapped() { onCollectTapped?() }

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UIKit
 
 /// 本地用户与动态数据源
 enum UserData {
@@ -107,7 +108,16 @@ enum UserData {
 
     // MARK: - Posts
 
-    static let allPosts: [PostModel] = imagePosts + videoPosts
+    private static let userPublishedPostsKey = "cs.userData.userPublishedPosts"
+
+    private static var builtInPosts: [PostModel] {
+        imagePosts + videoPosts
+    }
+
+    /// 内置 + 当前用户本地发布的动态（用户发布排在最前）
+    static var allPosts: [PostModel] {
+        loadUserPublishedPosts() + builtInPosts
+    }
 
     /// 图片动态（多图）
     static let imagePosts: [PostModel] = [
@@ -237,6 +247,27 @@ enum UserData {
         allUsers.first { $0.userId == userId }
     }
 
+    /// 根据帖子作者信息获取用户（本地无则按帖子字段构造）
+    static func userModel(forPost post: PostModel) -> UserModel {
+        if let user = user(userId: post.userId) {
+            return user
+        }
+        return UserModel(
+            userId: post.userId,
+            userName: post.userName,
+            avatarURL: post.avatarURL,
+            signature: "Personal signature~",
+            followingCount: 0,
+            followersCount: 0,
+            friendsCount: 0,
+            gemsCount: 0,
+            postCount: posts(forUserId: post.userId).count,
+            email: "",
+            password: "",
+            isBlock: false
+        )
+    }
+
     static func posts(forUserId userId: String) -> [PostModel] {
         allPosts.filter { $0.userId == userId }
     }
@@ -248,6 +279,63 @@ enum UserData {
     /// 测试账号发布的动态
     static var testUserPosts: [PostModel] {
         posts(forUserId: testUser.userId)
+    }
+
+    // MARK: - User Published Posts
+
+    static func addUserPost(_ post: PostModel) {
+        var list = loadUserPublishedPosts()
+        list.insert(post, at: 0)
+        saveUserPublishedPosts(list)
+    }
+
+    static func loadUserPublishedPosts() -> [PostModel] {
+        guard let data = UserDefaults.standard.data(forKey: userPublishedPostsKey),
+              let posts = try? JSONDecoder().decode([PostModel].self, from: data) else {
+            return []
+        }
+        return posts
+    }
+
+    private static func saveUserPublishedPosts(_ posts: [PostModel]) {
+        guard let data = try? JSONEncoder().encode(posts) else { return }
+        UserDefaults.standard.set(data, forKey: userPublishedPostsKey)
+    }
+
+    static func savePostImages(_ images: [UIImage], postId: String) -> [String] {
+        images.enumerated().compactMap { index, image in
+            guard let data = image.jpegData(compressionQuality: 0.85) else { return nil }
+            let url = postMediaDirectory().appendingPathComponent("\(postId)_\(index).jpg")
+            try? data.write(to: url, options: .atomic)
+            return url.path
+        }
+    }
+
+    static func savePostVideo(
+        thumbnail: UIImage,
+        videoURL: URL,
+        postId: String
+    ) -> (coverPath: String, videoPath: String)? {
+        let coverURL = postMediaDirectory().appendingPathComponent("\(postId)_cover.jpg")
+        let destVideoURL = postMediaDirectory().appendingPathComponent("\(postId).mp4")
+        guard let coverData = thumbnail.jpegData(compressionQuality: 0.85) else { return nil }
+        do {
+            try coverData.write(to: coverURL, options: .atomic)
+            if FileManager.default.fileExists(atPath: destVideoURL.path) {
+                try FileManager.default.removeItem(at: destVideoURL)
+            }
+            try FileManager.default.copyItem(at: videoURL, to: destVideoURL)
+            return (coverURL.path, destVideoURL.path)
+        } catch {
+            return nil
+        }
+    }
+
+    private static func postMediaDirectory() -> URL {
+        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("UserPosts", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
     }
 
     // MARK: - Builders

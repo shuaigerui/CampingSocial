@@ -11,6 +11,7 @@ class CS_ProfileHeaderView: UIView {
 
     var onSettingsTapped: (() -> Void)?
     var onEditAvatarTapped: (() -> Void)?
+    var onGemCardTapped: (() -> Void)?
 
     private let titleLabel: UILabel = {
         let v = UILabel()
@@ -44,6 +45,7 @@ class CS_ProfileHeaderView: UIView {
         if let avatar = "info_avatar".toImage {
             v.image = avatar
         }
+        v.isUserInteractionEnabled = true
         return v
     }()
 
@@ -146,6 +148,12 @@ class CS_ProfileHeaderView: UIView {
 
         gemCardView.addSubview(gemsTitleLabel)
         gemCardView.addSubview(gemsCountLabel)
+
+        let gemTap = UITapGestureRecognizer(target: self, action: #selector(gemCardTapped))
+        gemCardView.addGestureRecognizer(gemTap)
+
+        let avatarTap = UITapGestureRecognizer(target: self, action: #selector(editTapped))
+        avatarView.addGestureRecognizer(avatarTap)
 
         titleLabel.snp.makeConstraints { make in
             make.leading.equalToSuperview().offset(16)
@@ -280,5 +288,9 @@ class CS_ProfileHeaderView: UIView {
 
     @objc private func editTapped() {
         onEditAvatarTapped?()
+    }
+
+    @objc private func gemCardTapped() {
+        onGemCardTapped?()
     }
 }

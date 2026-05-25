@@ -66,6 +66,18 @@ class CS_SettingVC: CS_BaseVC {
         tv.register(CS_SettingCell.self, forCellReuseIdentifier: CS_SettingCell.reuseID)
         return tv
     }()
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        (tabBarController as? CS_TabBarVC)?.setCustomTabBarHidden(true)
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        if isMovingFromParent || isBeingDismissed {
+            (tabBarController as? CS_TabBarVC)?.setCustomTabBarHidden(false)
+        }
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()

@@ -62,6 +62,10 @@ class CS_HomeVC: CS_BaseVC {
         headerView.frame = CGRect(x: 0, y: 0, width: width, height: Layout.headerHeight)
         headerView.layoutIfNeeded()
         tableView.tableHeaderView = headerView
+
+        headerView.onAITapped = { [weak self] in
+            self?.navigationController?.pushViewController(CS_AIChatRoomVC(), animated: true)
+        }
     }
 
 }
@@ -131,6 +135,10 @@ extension CS_HomeVC: UITableViewDataSource, UITableViewDelegate {
         cell.onReportTapped = { [weak self] in
             self?.navigationController?.pushViewController(CS_ReportVC(), animated: true)
         }
+        cell.onAvatarTapped = { [weak self] in
+            guard let self, indexPath.row < self.postModels.count else { return }
+            self.pushPerson(post: self.postModels[indexPath.row])
+        }
     }
 
     private func bindVideoCellActions(_ cell: CS_DiscoverFeedCell, indexPath: IndexPath) {
@@ -150,5 +158,9 @@ extension CS_HomeVC: UITableViewDataSource, UITableViewDelegate {
             self?.navigationController?.pushViewController(CS_ReportVC(), animated: true)
         }
         cell.onPlayTapped = {}
+        cell.onAvatarTapped = { [weak self] in
+            guard let self, indexPath.row < self.postModels.count else { return }
+            self.pushPerson(post: self.postModels[indexPath.row])
+        }
     }
 }

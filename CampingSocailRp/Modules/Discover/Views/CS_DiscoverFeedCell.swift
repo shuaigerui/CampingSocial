@@ -16,6 +16,7 @@ final class CS_DiscoverFeedCell: UITableViewCell {
     var onReportTapped: (() -> Void)?
     var onPlayTapped: (() -> Void)?
     var onDeleteTapped: (() -> Void)?
+    var onAvatarTapped: (() -> Void)?
 
     private let cardView: UIView = {
         let v = UIView()
@@ -78,6 +79,7 @@ final class CS_DiscoverFeedCell: UITableViewCell {
         v.layer.cornerRadius = 14
         v.clipsToBounds = true
         v.contentMode = .scaleAspectFill
+        v.isUserInteractionEnabled = true
         return v
     }()
 
@@ -114,6 +116,9 @@ final class CS_DiscoverFeedCell: UITableViewCell {
         selectionStyle = .none
         backgroundColor = .clear
         contentView.backgroundColor = .clear
+
+        let avatarTap = UITapGestureRecognizer(target: self, action: #selector(avatarTapped))
+        avatarView.addGestureRecognizer(avatarTap)
 
         contentView.addSubview(cardView)
         cardView.addSubview(coverImageView)
@@ -260,6 +265,7 @@ final class CS_DiscoverFeedCell: UITableViewCell {
         collectButton.setImage(name.toImage, for: .normal)
     }
 
+    @objc private func avatarTapped() { onAvatarTapped?() }
     @objc private func followTapped() { onFollowTapped?() }
     @objc private func collectTapped() { onCollectTapped?() }
     @objc private func reportTapped() { onReportTapped?() }

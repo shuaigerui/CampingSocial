@@ -121,6 +121,7 @@ class CS_PostDetailVC: CS_BaseVC {
     private func appendComment(_ text: String) {
         comments.append(CS_PostComment(
             content: text,
+            userId: CS_CurrentUser.shared.user?.userId,
             avatarImageName: CS_CurrentUser.shared.user?.avatarURL
         ))
         postModel.commentCount += 1
@@ -180,7 +181,12 @@ extension CS_PostDetailVC: UITableViewDataSource, UITableViewDelegate {
             ) as? CS_PostDetailCommentCell else {
                 return UITableViewCell()
             }
-            cell.configure(with: comments[indexPath.row])
+            let comment = comments[indexPath.row]
+            cell.configure(with: comment)
+            cell.onAvatarTapped = { [weak self] in
+                guard let self, let userId = comment.userId else { return }
+                self.pushPerson(userId: userId)
+            }
             return cell
         }
     }
@@ -206,6 +212,10 @@ extension CS_PostDetailVC: UITableViewDataSource, UITableViewDelegate {
         }
         cell.onReportTapped = { [weak self] in
             self?.navigationController?.pushViewController(CS_ReportVC(), animated: true)
+        }
+        cell.onAvatarTapped = { [weak self] in
+            guard let self else { return }
+            self.pushPerson(post: self.postModel)
         }
     }
 }

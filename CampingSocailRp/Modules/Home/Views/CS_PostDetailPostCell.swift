@@ -15,6 +15,7 @@ final class CS_PostDetailPostCell: UITableViewCell {
     var onLikeTapped: (() -> Void)?
     var onCollectTapped: (() -> Void)?
     var onReportTapped: (() -> Void)?
+    var onAvatarTapped: (() -> Void)?
 
     private let cardView: UIView = {
         let v = UIView()
@@ -30,6 +31,7 @@ final class CS_PostDetailPostCell: UITableViewCell {
         v.clipsToBounds = true
         v.contentMode = .scaleAspectFill
         v.backgroundColor = UIColor(hex: "#D4C4A8")
+        v.isUserInteractionEnabled = true
         return v
     }()
 
@@ -103,6 +105,9 @@ final class CS_PostDetailPostCell: UITableViewCell {
         selectionStyle = .none
         backgroundColor = .clear
         contentView.backgroundColor = .clear
+
+        let avatarTap = UITapGestureRecognizer(target: self, action: #selector(avatarTapped))
+        avatarView.addGestureRecognizer(avatarTap)
 
         contentView.addSubview(cardView)
         cardView.addSubview(avatarView)
@@ -234,6 +239,7 @@ final class CS_PostDetailPostCell: UITableViewCell {
         return stack
     }
 
+    @objc private func avatarTapped() { onAvatarTapped?() }
     @objc private func followTapped() { onFollowTapped?() }
     @objc private func likeTapped() { onLikeTapped?() }
     @objc private func collectTapped() { onCollectTapped?() }

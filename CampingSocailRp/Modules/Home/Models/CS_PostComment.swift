@@ -9,5 +9,6 @@ import UIKit
 
 struct CS_PostComment {
     let content: String
+    var userId: String?
     var avatarImageName: String? = "info_avatar"
 }

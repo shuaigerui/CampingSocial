@@ -9,6 +9,8 @@ import UIKit
 
 class CS_HomeHeaderView: UIView {
 
+    var onAITapped: (() -> Void)?
+
     override init(frame: CGRect) {
         super.init(frame: frame)
         
@@ -41,9 +43,8 @@ class CS_HomeHeaderView: UIView {
         
     }
     
-    @objc private func onAI(){
-        
-        
+    @objc private func onAI() {
+        onAITapped?()
     }
     
     private lazy var titleLabel: UILabel = {
