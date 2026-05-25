@@ -39,7 +39,7 @@ class CS_ReportVC: CS_BaseVC {
     private let optionsStack: UIStackView = {
         let stack = UIStackView()
         stack.axis = .vertical
-        stack.spacing = 16
+        stack.spacing = 12
         stack.alignment = .fill
         return stack
     }()
@@ -54,6 +54,18 @@ class CS_ReportVC: CS_BaseVC {
         return btn
     }()
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        (tabBarController as? CS_TabBarVC)?.setCustomTabBarHidden(true)
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        if isMovingFromParent || isBeingDismissed {
+            (tabBarController as? CS_TabBarVC)?.setCustomTabBarHidden(false)
+        }
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
@@ -86,7 +98,7 @@ class CS_ReportVC: CS_BaseVC {
 
         optionsStack.snp.makeConstraints { make in
             make.left.right.equalToSuperview().inset(16)
-            make.centerY.equalToSuperview().offset(-40)
+            make.top.equalTo(backButton.snp.bottom).offset(15)
         }
 
         reasons.enumerated().forEach { index, title in
@@ -94,7 +106,7 @@ class CS_ReportVC: CS_BaseVC {
             optionButtons.append(btn)
             optionsStack.addArrangedSubview(btn)
             btn.snp.makeConstraints { make in
-                make.height.equalTo(48)
+                make.height.equalTo(65)
             }
         }
     }

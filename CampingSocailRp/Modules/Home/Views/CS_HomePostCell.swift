@@ -11,16 +11,25 @@ final class CS_HomePostCell: UITableViewCell {
 
     static let reuseID = "CS_HomePostCell"
 
+    private enum Layout {
+        static let imageRowHeight: CGFloat = 105
+        static let visibleImageCount: CGFloat = 3
+        static let imageSpacing: CGFloat = 8
+    }
+
     var onFollowTapped: (() -> Void)?
     var onLikeTapped: (() -> Void)?
     var onCollectTapped: (() -> Void)?
     var onReportTapped: (() -> Void)?
     var onDeleteTapped: (() -> Void)?
 
+    private var imagePaths: [String] = []
+    private var placeholderColors: [UIColor] = []
+
     private let cardView: UIView = {
         let v = UIView()
-        v.backgroundColor = UIColor(hex: "#F9F1C1")
-        v.layer.cornerRadius = 16
+        v.backgroundColor = UIColor(hex: "#E9DC8A")
+        v.layer.cornerRadius = 24
         v.clipsToBounds = true
         return v
     }()
@@ -50,6 +59,7 @@ final class CS_HomePostCell: UITableViewCell {
 
     private lazy var followButton: UIButton = {
         let btn = UIButton(type: .custom)
+        btn.clipsToBounds = true
         btn.imageView?.contentMode = .scaleAspectFit
         btn.contentHorizontalAlignment = .fill
         btn.contentVerticalAlignment = .fill
@@ -57,11 +67,25 @@ final class CS_HomePostCell: UITableViewCell {
         return btn
     }()
 
-    private lazy var reportButton: UIButton = {
-        let btn = UIButton(type: .custom)
-        btn.setImage("home_report".toImage, for: .normal)
-        btn.addTarget(self, action: #selector(reportTapped), for: .touchUpInside)
-        return btn
+    private let reportContainer: UIView = {
+        let v = UIView()
+        v.isUserInteractionEnabled = true
+        return v
+    }()
+
+    private let reportImageView: UIImageView = {
+        let v = UIImageView(image: UIImage(named: "home_report"))
+        v.contentMode = .scaleAspectFit
+        v.isUserInteractionEnabled = false
+        return v
+    }()
+
+    private let headerActionsStack: UIStackView = {
+        let stack = UIStackView()
+        stack.axis = .horizontal
+        stack.spacing = 8
+        stack.alignment = .center
+        return stack
     }()
 
     private lazy var deleteButton: UIButton = {
@@ -80,15 +104,21 @@ final class CS_HomePostCell: UITableViewCell {
         return v
     }()
 
-    private let imagesStack: UIStackView = {
-        let stack = UIStackView()
-        stack.axis = .horizontal
-        stack.spacing = 8
-        stack.distribution = .fillEqually
-        return stack
-    }()
+    private lazy var imagesCollectionView: UICollectionView = {
+        let layout = UICollectionViewFlowLayout()
+        layout.scrollDirection = .horizontal
+        layout.minimumLineSpacing = Layout.imageSpacing
+        layout.minimumInteritemSpacing = 0
 
-    private var imageViews: [UIImageView] = []
+        let cv = UICollectionView(frame: .zero, collectionViewLayout: layout)
+        cv.backgroundColor = .clear
+        cv.showsHorizontalScrollIndicator = false
+        cv.alwaysBounceHorizontal = true
+        cv.dataSource = self
+        cv.delegate = self
+        cv.register(CS_HomePostImageCell.self, forCellWithReuseIdentifier: CS_HomePostImageCell.reuseID)
+        return cv
+    }()
 
     private lazy var likeButton = makeActionButton(action: #selector(likeTapped))
     private lazy var commentButton: UIButton = {
@@ -118,31 +148,36 @@ final class CS_HomePostCell: UITableViewCell {
         fatalError("init(coder:) has not been implemented")
     }
 
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        imagePaths = []
+        placeholderColors = []
+        reportContainer.isHidden = false
+        deleteButton.isHidden = true
+        imagesCollectionView.setContentOffset(.zero, animated: false)
+    }
+
     private func setupUI() {
         selectionStyle = .none
         backgroundColor = .clear
         contentView.backgroundColor = .clear
 
+        let reportTap = UITapGestureRecognizer(target: self, action: #selector(reportTapped))
+        reportContainer.addGestureRecognizer(reportTap)
+
+        reportContainer.addSubview(reportImageView)
+
         contentView.addSubview(cardView)
         cardView.addSubview(avatarView)
         cardView.addSubview(nameLabel)
         cardView.addSubview(timeLabel)
-        cardView.addSubview(followButton)
-        cardView.addSubview(reportButton)
-        cardView.addSubview(deleteButton)
+        headerActionsStack.addArrangedSubview(followButton)
+        headerActionsStack.addArrangedSubview(reportContainer)
+        headerActionsStack.addArrangedSubview(deleteButton)
+        cardView.addSubview(headerActionsStack)
         cardView.addSubview(contentLabel)
-        cardView.addSubview(imagesStack)
+        cardView.addSubview(imagesCollectionView)
         cardView.addSubview(actionStack)
-
-        for _ in 0..<3 {
-            let iv = UIImageView()
-            iv.backgroundColor = UIColor(hex: "#E8DFC8")
-            iv.layer.cornerRadius = 10
-            iv.clipsToBounds = true
-            iv.contentMode = .scaleAspectFill
-            imagesStack.addArrangedSubview(iv)
-            imageViews.append(iv)
-        }
 
         let likeWrap = makeActionWrap(button: likeButton, label: likeCountLabel)
         let commentWrap = makeActionWrap(button: commentButton, label: commentCountLabel)
@@ -166,7 +201,7 @@ final class CS_HomePostCell: UITableViewCell {
         nameLabel.snp.makeConstraints { make in
             make.left.equalTo(avatarView.snp.right).offset(10)
             make.top.equalTo(avatarView).offset(2)
-            make.right.lessThanOrEqualTo(followButton.snp.left).offset(-8)
+            make.right.lessThanOrEqualTo(headerActionsStack.snp.left).offset(-8)
         }
 
         timeLabel.snp.makeConstraints { make in
@@ -174,23 +209,27 @@ final class CS_HomePostCell: UITableViewCell {
             make.top.equalTo(nameLabel.snp.bottom).offset(2)
         }
 
-        reportButton.snp.makeConstraints { make in
+        headerActionsStack.snp.makeConstraints { make in
             make.centerY.equalTo(avatarView)
             make.right.equalToSuperview().offset(-12)
+        }
+
+        followButton.snp.makeConstraints { make in
+            make.width.equalTo(70)
+            make.height.equalTo(27)
+        }
+
+        reportContainer.snp.makeConstraints { make in
+            make.width.height.equalTo(28)
+        }
+
+        reportImageView.snp.makeConstraints { make in
+            make.center.equalToSuperview()
             make.width.height.equalTo(20)
         }
 
         deleteButton.snp.makeConstraints { make in
-            make.centerY.equalTo(avatarView)
-            make.right.equalToSuperview().offset(-12)
             make.width.height.equalTo(24)
-        }
-
-        followButton.snp.makeConstraints { make in
-            make.centerY.equalTo(avatarView)
-            make.right.equalTo(reportButton.snp.left).offset(-8)
-            make.width.equalTo(70)
-            make.height.equalTo(27)
         }
 
         contentLabel.snp.makeConstraints { make in
@@ -198,14 +237,14 @@ final class CS_HomePostCell: UITableViewCell {
             make.left.right.equalToSuperview().inset(12)
         }
 
-        imagesStack.snp.makeConstraints { make in
+        imagesCollectionView.snp.makeConstraints { make in
             make.top.equalTo(contentLabel.snp.bottom).offset(12)
             make.left.right.equalToSuperview().inset(12)
-            make.height.equalTo(105)
+            make.height.equalTo(Layout.imageRowHeight)
         }
 
         actionStack.snp.makeConstraints { make in
-            make.top.equalTo(imagesStack.snp.bottom).offset(12)
+            make.top.equalTo(imagesCollectionView.snp.bottom).offset(12)
             make.left.equalToSuperview().offset(12)
             make.right.lessThanOrEqualToSuperview().offset(-12)
             make.bottom.equalToSuperview().offset(-12)
@@ -218,18 +257,25 @@ final class CS_HomePostCell: UITableViewCell {
         }
     }
 
-    func configure(with post: CS_HomePost, showsDelete: Bool = false) {
+    func configure(
+        with post: CS_HomePost,
+        showsDelete: Bool = false,
+        showsFollowButton: Bool = true
+    ) {
         nameLabel.text = post.userName
         timeLabel.text = post.time
         contentLabel.text = post.content
         likeCountLabel.text = "\(post.likeCount)"
         commentCountLabel.text = "\(post.commentCount)"
-        updateFollowButton(isFollowing: post.isFollowing)
+        followButton.isHidden = !showsFollowButton
+        if showsFollowButton {
+            updateFollowButton(isFollowing: post.isFollowing)
+        }
         updateLikeButton(isLiked: post.isLiked)
         updateCollectButton(isCollected: post.isCollected)
 
         if let avatarPath = post.avatarPath {
-            avatarView.image = avatarPath.resourceFileImage ?? avatarPath.toImage
+            avatarView.image = avatarPath.resourceFileImage
             avatarView.backgroundColor = avatarView.image == nil
                 ? UIColor(hex: "#D4C4A8") : .clear
         } else {
@@ -237,38 +283,27 @@ final class CS_HomePostCell: UITableViewCell {
             avatarView.backgroundColor = UIColor(hex: "#D4C4A8")
         }
 
-        let paths = Array(post.imagePaths.prefix(imageViews.count))
-        if !paths.isEmpty {
-            zip(imageViews, paths).forEach { iv, path in
-                iv.image = path.resourceFileImage
-                iv.backgroundColor = iv.image == nil ? UIColor(hex: "#E8DFC8") : .clear
-            }
-            imageViews.dropFirst(paths.count).forEach {
-                $0.image = nil
-                $0.backgroundColor = UIColor(hex: "#E8DFC8")
-            }
-        } else {
-            zip(imageViews, post.imageColors).forEach { iv, color in
-                iv.image = nil
-                iv.backgroundColor = color
-            }
-        }
+        imagePaths = post.imagePaths
+        placeholderColors = post.imageColors
+        imagesCollectionView.reloadData()
+        imagesCollectionView.showsHorizontalScrollIndicator = imagePaths.count > 3
+        imagesCollectionView.isScrollEnabled = imagePaths.count > Int(Layout.visibleImageCount)
+
         setShowsDeleteButton(showsDelete)
+        cardView.bringSubviewToFront(headerActionsStack)
     }
 
     private func setShowsDeleteButton(_ shows: Bool) {
-        reportButton.isHidden = shows
+        reportContainer.isHidden = shows
         deleteButton.isHidden = !shows
-        followButton.snp.remakeConstraints { make in
-            make.centerY.equalTo(avatarView)
-            make.width.equalTo(70)
-            make.height.equalTo(27)
-            if shows {
-                make.right.equalTo(deleteButton.snp.left).offset(-8)
-            } else {
-                make.right.equalTo(reportButton.snp.left).offset(-8)
-            }
-        }
+    }
+
+    private func imageItemSize(for collectionView: UICollectionView) -> CGSize {
+        let count = max(CGFloat(max(imagePaths.count, placeholderColors.count)), 1)
+        let visible = min(Layout.visibleImageCount, count)
+        let spacing = Layout.imageSpacing * max(visible - 1, 0)
+        let width = (collectionView.bounds.width - spacing) / visible
+        return CGSize(width: max(width, 80), height: Layout.imageRowHeight)
     }
 
     private func updateFollowButton(isFollowing: Bool) {
@@ -313,4 +348,48 @@ final class CS_HomePostCell: UITableViewCell {
     @objc private func reportTapped() { onReportTapped?() }
     @objc private func deleteTapped() { onDeleteTapped?() }
     @objc private func commentTapped() {}
+}
+
+// MARK: - Images Collection
+
+extension CS_HomePostCell: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
+
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        if !imagePaths.isEmpty { return imagePaths.count }
+        return placeholderColors.count
+    }
+
+    func collectionView(
+        _ collectionView: UICollectionView,
+        cellForItemAt indexPath: IndexPath
+    ) -> UICollectionViewCell {
+        guard let cell = collectionView.dequeueReusableCell(
+            withReuseIdentifier: CS_HomePostImageCell.reuseID,
+            for: indexPath
+        ) as? CS_HomePostImageCell else {
+            return UICollectionViewCell()
+        }
+
+        if !imagePaths.isEmpty {
+            cell.configure(path: imagePaths[indexPath.item])
+        } else {
+            let color = placeholderColors.indices.contains(indexPath.item)
+                ? placeholderColors[indexPath.item]
+                : UIColor(hex: "#E8DFC8")
+            cell.configure(color: color)
+        }
+        return cell
+    }
+
+    func collectionView(
+        _ collectionView: UICollectionView,
+        layout collectionViewLayout: UICollectionViewLayout,
+        sizeForItemAt indexPath: IndexPath
+    ) -> CGSize {
+        imageItemSize(for: collectionView)
+    }
+
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        // 可在此跳转详情
+    }
 }

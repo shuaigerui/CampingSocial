@@ -13,7 +13,7 @@ final class CS_PostDetailCommentCell: UITableViewCell {
 
     private let cardView: UIView = {
         let v = UIView()
-        v.backgroundColor = UIColor(hex: "#FFF6D6")
+        v.backgroundColor = UIColor(hex: "#F3F7BB").withAlphaComponent(0.5)
         v.layer.cornerRadius = 16
         v.clipsToBounds = true
         return v
@@ -56,8 +56,8 @@ final class CS_PostDetailCommentCell: UITableViewCell {
 
         cardView.snp.makeConstraints { make in
             make.left.right.equalToSuperview().inset(16)
-            make.top.equalToSuperview().offset(4)
-            make.bottom.equalToSuperview().offset(-4)
+            make.top.equalToSuperview()
+            make.bottom.equalToSuperview().offset(-8)
         }
 
         avatarView.snp.makeConstraints { make in
@@ -77,9 +77,10 @@ final class CS_PostDetailCommentCell: UITableViewCell {
 
     func configure(with comment: CS_PostComment) {
         contentLabel.text = comment.content
-        if let name = comment.avatarImageName, let image = name.toImage {
-            avatarView.image = image
-            avatarView.backgroundColor = .clear
+        if let name = comment.avatarImageName {
+            avatarView.image = name.resourceFileImage ?? name.toImage
+            avatarView.backgroundColor = avatarView.image == nil
+                ? UIColor(hex: "#D4C4A8") : .clear
         } else {
             avatarView.image = nil
             avatarView.backgroundColor = UIColor(hex: "#D4C4A8")

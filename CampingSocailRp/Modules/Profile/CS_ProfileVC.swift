@@ -28,10 +28,26 @@ class CS_ProfileVC: CS_BaseVC {
 
     private lazy var headerView = CS_ProfileHeaderView()
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        loadData()
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-        loadMockData()
         setupTableView()
+        loadData()
+    }
+
+    private func loadData() {
+        guard let user = CS_CurrentUser.shared.user else { return }
+
+        let userPosts = UserData.posts(forUserId: user.userId)
+        posts = userPosts.map { $0.toProfilePostItem() }
+
+        headerView.configure(with: user, postCount: userPosts.count)
+        tableView.reloadData()
     }
 
     private func setupTableView() {
@@ -51,41 +67,6 @@ class CS_ProfileVC: CS_BaseVC {
         headerView.onEditAvatarTapped = {}
     }
 
-    private func loadMockData() {
-        let imagePost = CS_HomePost(
-            userName: "Luoluo",
-            time: "09:08am",
-            content: "Hiking through the clouds and mist is like stepping into another world",
-            likeCount: 125,
-            commentCount: 39,
-            isFollowing: false,
-            isLiked: false,
-            isCollected: false,
-            imageColors: [
-                UIColor(hex: "#C5D4B0"),
-                UIColor(hex: "#A8B89A"),
-                UIColor(hex: "#8FA67E")
-            ],
-            imagePaths: [],
-            avatarPath: nil
-        )
-
-        let videoPost = CS_DiscoverFeedItem(
-            coverImageName: "discover",
-            content: "Like bitternessLike bitternessLike bitternessLike bitternessLike bitterness",
-            userName: "Luoluo",
-            isFollowing: false,
-            isCollected: true,
-            coverImagePath: nil,
-            videoPath: nil
-        )
-
-        posts = [
-            CS_ProfilePostItem(kind: .image, imagePost: imagePost, videoPost: nil),
-            CS_ProfilePostItem(kind: .video, imagePost: nil, videoPost: videoPost),
-            CS_ProfilePostItem(kind: .image, imagePost: imagePost, videoPost: nil)
-        ]
-    }
 }
 
 extension CS_ProfileVC: UITableViewDataSource, UITableViewDelegate {
@@ -106,7 +87,7 @@ extension CS_ProfileVC: UITableViewDataSource, UITableViewDelegate {
                   let post = item.imagePost else {
                 return UITableViewCell()
             }
-            cell.configure(with: post, showsDelete: true)
+            cell.configure(with: post, showsDelete: true, showsFollowButton: false)
             bindImageCellActions(cell, indexPath: indexPath)
             return cell
 
@@ -118,19 +99,13 @@ extension CS_ProfileVC: UITableViewDataSource, UITableViewDelegate {
                   let post = item.videoPost else {
                 return UITableViewCell()
             }
-            cell.configure(with: post, showsDelete: true)
+            cell.configure(with: post, showsDelete: true, showsFollowButton: false)
             bindVideoCellActions(cell, indexPath: indexPath)
             return cell
         }
     }
 
     private func bindImageCellActions(_ cell: CS_HomePostCell, indexPath: IndexPath) {
-        cell.onFollowTapped = { [weak self] in
-            guard let self, var post = self.posts[indexPath.row].imagePost else { return }
-            post.isFollowing.toggle()
-            self.posts[indexPath.row].imagePost = post
-            self.tableView.reloadRows(at: [indexPath], with: .none)
-        }
         cell.onLikeTapped = { [weak self] in
             guard let self, var post = self.posts[indexPath.row].imagePost else { return }
             post.isLiked.toggle()
@@ -149,12 +124,6 @@ extension CS_ProfileVC: UITableViewDataSource, UITableViewDelegate {
     }
 
     private func bindVideoCellActions(_ cell: CS_DiscoverFeedCell, indexPath: IndexPath) {
-        cell.onFollowTapped = { [weak self] in
-            guard let self, var post = self.posts[indexPath.row].videoPost else { return }
-            post.isFollowing.toggle()
-            self.posts[indexPath.row].videoPost = post
-            self.tableView.reloadRows(at: [indexPath], with: .none)
-        }
         cell.onCollectTapped = { [weak self] in
             guard let self, var post = self.posts[indexPath.row].videoPost else { return }
             post.isCollected.toggle()

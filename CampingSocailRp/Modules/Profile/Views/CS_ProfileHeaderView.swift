@@ -243,6 +243,37 @@ class CS_ProfileHeaderView: UIView {
         return stack
     }
 
+    func configure(with user: UserModel, postCount: Int? = nil) {
+        nameLabel.text = user.userName
+        idLabel.text = user.displayID
+        signatureLabel.text = user.signature
+        gemsCountLabel.text = "\(user.gemsCount)"
+
+        let count = postCount ?? user.postCount
+        postsTitleLabel.text = "My posts(\(count))"
+
+        if let avatarPath = user.avatarURL, !avatarPath.isEmpty {
+            avatarView.image = avatarPath.resourceFileImage ?? avatarPath.toImage
+            avatarView.backgroundColor = avatarView.image == nil
+                ? UIColor(hex: "#D4C4A8") : .clear
+        } else {
+            avatarView.image = "info_avatar".toImage
+            avatarView.backgroundColor = avatarView.image == nil
+                ? UIColor(hex: "#D4C4A8") : .clear
+        }
+
+        statsStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        statsStack.addArrangedSubview(
+            makeStatItem(value: "\(user.followingCount)", title: "Following")
+        )
+        statsStack.addArrangedSubview(
+            makeStatItem(value: "\(user.followersCount)", title: "Followers")
+        )
+        statsStack.addArrangedSubview(
+            makeStatItem(value: "\(user.friendsCount)", title: "Friends")
+        )
+    }
+
     @objc private func settingsTapped() {
         onSettingsTapped?()
     }

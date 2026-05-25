@@ -11,7 +11,11 @@ import UIKit
 final class CS_PostDetailGalleryView: UIView {
 
     var onBackTapped: (() -> Void)?
+    var onGalleryTapped: (() -> Void)?
 
+    private var showsPlayButton = false
+    private var videoPath: String?
+    private var imagePaths: [String] = []
     private var imageColors: [UIColor] = []
     private var imageNames: [String] = []
 
@@ -35,9 +39,6 @@ final class CS_PostDetailGalleryView: UIView {
     private lazy var backButton: UIButton = {
         let btn = UIButton(type: .custom)
         btn.setImage("common_back".toImage, for: .normal)
-        btn.backgroundColor = UIColor.white.withAlphaComponent(0.35)
-        btn.layer.cornerRadius = 20
-        btn.clipsToBounds = true
         btn.addTarget(self, action: #selector(backTapped), for: .touchUpInside)
         return btn
     }()
@@ -50,6 +51,13 @@ final class CS_PostDetailGalleryView: UIView {
         pc.isUserInteractionEnabled = false
         return pc
     }()
+    
+    private lazy var playView: UIImageView = {
+        let v = UIImageView()
+        v.image = "detail_play".toImage
+        v.contentMode = .scaleAspectFill
+        return v
+    }()
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -61,12 +69,19 @@ final class CS_PostDetailGalleryView: UIView {
     }
 
     private func setupUI() {
+        layer.cornerRadius = 24
+        layer.maskedCorners = [.layerMinXMaxYCorner, .layerMaxXMaxYCorner]
+        layer.masksToBounds = true
         clipsToBounds = true
-        backgroundColor = UIColor(hex: "#D4C4A8")
+        backgroundColor = .clear
 
         addSubview(collectionView)
         addSubview(backButton)
         addSubview(pageControl)
+        addSubview(playView)
+
+        let tap = UITapGestureRecognizer(target: self, action: #selector(galleryTapped))
+        addGestureRecognizer(tap)
 
         collectionView.snp.makeConstraints { make in
             make.edges.equalToSuperview()
@@ -82,35 +97,57 @@ final class CS_PostDetailGalleryView: UIView {
             make.right.equalToSuperview().offset(-16)
             make.bottom.equalToSuperview().offset(-12)
         }
+        
+        playView.snp.makeConstraints { make in
+            make.centerX.equalToSuperview()
+            make.centerY.equalToSuperview().offset(20)
+        }
     }
 
-    func configure(imageNames: [String]) {
-        self.imageNames = imageNames
+    func configure(imagePaths paths: [String], isVideo: Bool = false, videoPath path: String? = nil) {
+        imagePaths = paths
+        imageNames = []
+        imageColors = []
+        showsPlayButton = isVideo
+        videoPath = isVideo ? path : nil
+        reloadGallery()
+    }
+
+    func configure(imageNames names: [String]) {
+        imageNames = names
+        imagePaths = []
         imageColors = []
         reloadGallery()
     }
 
     func configure(imageColors: [UIColor]) {
         self.imageColors = imageColors
+        imagePaths = []
         imageNames = []
         reloadGallery()
     }
 
     private func reloadGallery() {
-        let count = max(imageNames.count, imageColors.count)
+        let count = max(imagePaths.count, max(imageNames.count, imageColors.count))
         pageControl.numberOfPages = count
         pageControl.currentPage = 0
         pageControl.isHidden = count <= 1
+        playView.isHidden = !showsPlayButton
         collectionView.reloadData()
         collectionView.setContentOffset(.zero, animated: false)
     }
 
     private func itemCount() -> Int {
-        max(imageNames.count, imageColors.count)
+        max(imagePaths.count, max(imageNames.count, imageColors.count))
     }
 
     @objc private func backTapped() {
         onBackTapped?()
+    }
+
+    @objc private func galleryTapped() {
+        guard showsPlayButton else { return }
+        onGalleryTapped?()
     }
 
     private func updateCurrentPage() {
@@ -140,7 +177,15 @@ extension CS_PostDetailGalleryView: UICollectionViewDataSource, UICollectionView
             return UICollectionViewCell()
         }
 
-        if indexPath.item < imageNames.count {
+        if showsPlayButton, let videoPath, !videoPath.isEmpty {
+            if let image = CS_VideoThumbnail.cachedImage(forVideoPath: videoPath) {
+                cell.configure(image: image)
+            } else {
+                cell.configure(image: nil)
+            }
+        } else if indexPath.item < imagePaths.count {
+            cell.configure(image: imagePaths[indexPath.item].resourceFileImage)
+        } else if indexPath.item < imageNames.count {
             cell.configure(image: imageNames[indexPath.item].toImage)
         } else if indexPath.item < imageColors.count {
             cell.configure(backgroundColor: imageColors[indexPath.item])
@@ -155,6 +200,26 @@ extension CS_PostDetailGalleryView: UICollectionViewDataSource, UICollectionView
         sizeForItemAt indexPath: IndexPath
     ) -> CGSize {
         collectionView.bounds.size
+    }
+
+    func collectionView(
+        _ collectionView: UICollectionView,
+        willDisplay cell: UICollectionViewCell,
+        forItemAt indexPath: IndexPath
+    ) {
+        guard showsPlayButton,
+              let videoPath,
+              !videoPath.isEmpty,
+              CS_VideoThumbnail.cachedImage(forVideoPath: videoPath) == nil,
+              let cell = cell as? CS_PostDetailImageCell else { return }
+
+        CS_VideoThumbnail.loadFirstFrame(forVideoPath: videoPath) { [weak collectionView] image in
+            guard let collectionView,
+                  let visible = collectionView.cellForItem(at: indexPath) as? CS_PostDetailImageCell else {
+                return
+            }
+            visible.configure(image: image)
+        }
     }
 
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {

@@ -5,6 +5,7 @@
 //  Created by  mac on 2026/5/22.
 //
 
+import Toast_Swift
 import UIKit
 
 enum CS_SetupMode {
@@ -261,21 +262,30 @@ class CS_SetupFormVC: CS_BaseVC {
     }
 
     @objc private func onAction() {
+        let email = emailField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let password = passwordField.text ?? ""
+
         switch mode {
         case .signIn:
-            enterMainApp()
+            guard !email.isEmpty, !password.isEmpty else {
+                view.makeToast("Please enter email and password")
+                return
+            }
+            guard CS_CurrentUser.shared.login(email: email, password: password) else {
+                view.makeToast("Invalid email or password")
+                return
+            }
+            CS_CurrentUser.shared.switchRoot(on: view.window)
         case .create:
-            navigationController?.pushViewController(CS_SetupInfoVC(), animated: true)
+            guard !email.isEmpty, !password.isEmpty else {
+                view.makeToast("Please enter email and password")
+                return
+            }
+            navigationController?.pushViewController(
+                CS_SetupInfoVC(mode: .register(email: email, password: password)),
+                animated: true
+            )
         }
-    }
-
-    private func enterMainApp() {
-        guard let window = view.window ?? UIApplication.shared.connectedScenes
-            .compactMap({ $0 as? UIWindowScene })
-            .flatMap(\.windows)
-            .first(where: { $0.isKeyWindow }) else { return }
-        window.rootViewController = CS_TabBarVC()
-        UIView.transition(with: window, duration: 0.25, options: .transitionCrossDissolve, animations: nil)
     }
 
     private func openCreateAccount() {

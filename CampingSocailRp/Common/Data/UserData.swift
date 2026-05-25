@@ -16,14 +16,14 @@ enum UserData {
     static let testUser = UserModel(
         userId: "90000001",
         userName: "Boluo",
-        avatarURL: "info_avatar",
+        avatarURL: CS_ResourcePath.avatar("avatar_06"),
         signature: "Personal signature~",
         followingCount: 128,
         followersCount: 256,
         friendsCount: 64,
         gemsCount: 9999,
         postCount: 4,
-        email: "test@camping.com",
+        email: "test@gmail.com",
         password: "123456",
         isBlock: false
     )

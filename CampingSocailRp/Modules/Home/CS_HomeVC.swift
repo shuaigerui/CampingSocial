@@ -13,6 +13,7 @@ class CS_HomeVC: CS_BaseVC {
         static let headerHeight: CGFloat = 366
     }
 
+    private var postModels: [PostModel] = []
     private var posts: [CS_ProfilePostItem] = []
 
     private lazy var tableView: UITableView = {
@@ -45,7 +46,8 @@ class CS_HomeVC: CS_BaseVC {
     }
     
     private func loadData() {
-        posts = UserData.allPosts.map { $0.toProfilePostItem() }
+        postModels = UserData.allPosts
+        posts = postModels.map { $0.toProfilePostItem() }
         tableView.reloadData()
     }
 
@@ -98,6 +100,13 @@ extension CS_HomeVC: UITableViewDataSource, UITableViewDelegate {
             bindVideoCellActions(cell, indexPath: indexPath)
             return cell
         }
+    }
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+        guard indexPath.row < postModels.count else { return }
+        let detailVC = CS_PostDetailVC(postModel: postModels[indexPath.row])
+        navigationController?.pushViewController(detailVC, animated: true)
     }
 
     private func bindImageCellActions(_ cell: CS_HomePostCell, indexPath: IndexPath) {

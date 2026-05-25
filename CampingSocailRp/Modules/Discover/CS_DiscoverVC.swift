@@ -9,9 +9,15 @@ import UIKit
 
 class CS_DiscoverVC: CS_BaseVC {
 
+    private var forYouPostModels: [PostModel] = []
+    private var followingPostModels: [PostModel] = []
     private var forYouItems: [CS_ProfilePostItem] = []
     private var followingItems: [CS_ProfilePostItem] = []
     private var currentSegment = 0
+
+    private var displayPostModels: [PostModel] {
+        currentSegment == 0 ? forYouPostModels : followingPostModels
+    }
 
     private var displayItems: [CS_ProfilePostItem] {
         currentSegment == 0 ? forYouItems : followingItems
@@ -34,10 +40,26 @@ class CS_DiscoverVC: CS_BaseVC {
 
     private lazy var headerView = CS_DiscoverHeaderView()
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        loadData()
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-        loadMockData()
         setupTableView()
+    }
+
+    private func loadData() {
+        let all = UserData.allPosts
+        forYouPostModels = all
+        forYouItems = all.map { $0.toProfilePostItem() }
+
+        followingPostModels = all
+        followingItems = forYouItems
+
+        tableView.reloadData()
     }
 
     private func setupTableView() {
@@ -58,57 +80,6 @@ class CS_DiscoverVC: CS_BaseVC {
         }
     }
 
-    private func loadMockData() {
-        let imagePost = CS_HomePost(
-            userName: "Luoluo",
-            time: "09:08am",
-            content: "Hiking through the clouds and mist is like stepping into another world",
-            likeCount: 125,
-            commentCount: 39,
-            isFollowing: false,
-            isLiked: false,
-            isCollected: false,
-            imageColors: [
-                UIColor(hex: "#C5D4B0"),
-                UIColor(hex: "#A8B89A"),
-                UIColor(hex: "#8FA67E")
-            ],
-            imagePaths: [],
-            avatarPath: nil
-        )
-
-        let videoPost = CS_DiscoverFeedItem(
-            coverImageName: "discover",
-            content: "Like bitternessLike bitternessLike bitternessLike bitternessLike bitterness",
-            userName: "Luoluo",
-            isFollowing: false,
-            isCollected: false,
-            coverImagePath: nil,
-            videoPath: nil
-        )
-
-        let videoPostFollowing = CS_DiscoverFeedItem(
-            coverImageName: "discover",
-            content: "Like bitternessLike bitternessLike bitternessLike bitternessLike bitterness",
-            userName: "Luoluo",
-            isFollowing: true,
-            isCollected: true,
-            coverImagePath: nil,
-            videoPath: nil
-        )
-
-        forYouItems = [
-            CS_ProfilePostItem(kind: .video, imagePost: nil, videoPost: videoPost),
-            CS_ProfilePostItem(kind: .image, imagePost: imagePost, videoPost: nil),
-            CS_ProfilePostItem(kind: .video, imagePost: nil, videoPost: videoPost),
-            CS_ProfilePostItem(kind: .image, imagePost: imagePost, videoPost: nil)
-        ]
-
-        followingItems = [
-            CS_ProfilePostItem(kind: .video, imagePost: nil, videoPost: videoPostFollowing),
-            CS_ProfilePostItem(kind: .image, imagePost: imagePost, videoPost: nil)
-        ]
-    }
 }
 
 extension CS_DiscoverVC: UITableViewDataSource, UITableViewDelegate {
@@ -145,6 +116,14 @@ extension CS_DiscoverVC: UITableViewDataSource, UITableViewDelegate {
             bindVideoCellActions(cell, indexPath: indexPath)
             return cell
         }
+    }
+
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+        let models = displayPostModels
+        guard indexPath.row < models.count else { return }
+        let detailVC = CS_PostDetailVC(postModel: models[indexPath.row])
+        navigationController?.pushViewController(detailVC, animated: true)
     }
 
     private func bindImageCellActions(_ cell: CS_HomePostCell, indexPath: IndexPath) {

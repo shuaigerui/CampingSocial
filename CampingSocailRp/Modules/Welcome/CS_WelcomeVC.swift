@@ -134,7 +134,9 @@ class CS_WelcomeVC: CS_BaseVC {
         return attr
     }
 
-    @objc private func onAppleSignIn() {}
+    @objc private func onAppleSignIn() {
+        navigationController?.pushViewController(CS_SetupInfoVC(mode: .apple), animated: true)
+    }
 
     @objc private func onCreateAccount() {
         navigationController?.pushViewController(CS_SetupFormVC(mode: .create), animated: true)

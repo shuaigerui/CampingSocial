@@ -16,6 +16,8 @@ struct CS_DiscoverFeedItem {
     var isCollected: Bool
     /// 封面：Bundle 路径或 Assets 名
     let coverImagePath: String?
+    /// 头像：Bundle 路径或 Assets 名
+    let avatarPath: String?
     /// 视频本地路径
     let videoPath: String?
 }

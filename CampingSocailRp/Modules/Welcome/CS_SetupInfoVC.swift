@@ -5,9 +5,27 @@
 //  Created by  mac on 2026/5/22.
 //
 
+import Toast_Swift
 import UIKit
 
+enum CS_SetupInfoMode {
+    case register(email: String, password: String)
+    case apple
+}
+
 class CS_SetupInfoVC: CS_BaseVC {
+
+    private let mode: CS_SetupInfoMode
+
+    init(mode: CS_SetupInfoMode) {
+        self.mode = mode
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        self.mode = .apple
+        super.init(coder: coder)
+    }
 
     private lazy var backButton: UIButton = {
         let btn = UIButton(type: .custom)
@@ -199,7 +217,39 @@ class CS_SetupInfoVC: CS_BaseVC {
     @objc private func onAvatarTapped() {}
 
     @objc private func onCreate() {
-        enterMainApp()
+        let userName = nameField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let signature = bioTextView.text.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !userName.isEmpty else {
+            view.makeToast("Please enter your name")
+            return
+        }
+
+        let didLogin: Bool
+        switch mode {
+        case .register(let email, let password):
+            didLogin = CS_CurrentUser.shared.register(
+                email: email,
+                password: password,
+                userName: userName,
+                signature: signature.isEmpty ? "Personal signature~" : signature
+            )
+            if !didLogin {
+                view.makeToast("This email is already registered")
+                return
+            }
+        case .apple:
+            didLogin = CS_CurrentUser.shared.loginWithApple(
+                userName: userName,
+                signature: signature.isEmpty ? "Personal signature~" : signature
+            )
+        }
+
+        guard didLogin else {
+            view.makeToast("Unable to complete sign up")
+            return
+        }
+        CS_CurrentUser.shared.switchRoot(on: view.window)
     }
 
     private func openSignIn() {
@@ -208,14 +258,6 @@ class CS_SetupInfoVC: CS_BaseVC {
         nav.pushViewController(CS_SetupFormVC(mode: .signIn), animated: true)
     }
 
-    private func enterMainApp() {
-        guard let window = view.window ?? UIApplication.shared.connectedScenes
-            .compactMap({ $0 as? UIWindowScene })
-            .flatMap(\.windows)
-            .first(where: { $0.isKeyWindow }) else { return }
-        window.rootViewController = CS_TabBarVC()
-        UIView.transition(with: window, duration: 0.25, options: .transitionCrossDissolve, animations: nil)
-    }
 }
 
 extension CS_SetupInfoVC: UITextViewDelegate {

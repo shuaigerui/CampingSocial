@@ -18,35 +18,32 @@ final class CS_PostDetailPostCell: UITableViewCell {
 
     private let cardView: UIView = {
         let v = UIView()
-        v.backgroundColor = UIColor(hex: "#FFF6D6")
-        v.layer.cornerRadius = 16
+        v.backgroundColor = UIColor(hex: "#E9DC8A")
+        v.layer.cornerRadius = 24
         v.clipsToBounds = true
         return v
     }()
 
     private let avatarView: UIImageView = {
         let v = UIImageView()
-        v.backgroundColor = UIColor(hex: "#D4C4A8")
-        v.layer.cornerRadius = 20
+        v.layer.cornerRadius = 24
         v.clipsToBounds = true
         v.contentMode = .scaleAspectFill
-        if let avatar = "info_avatar".toImage {
-            v.image = avatar
-        }
+        v.backgroundColor = UIColor(hex: "#D4C4A8")
         return v
     }()
 
     private let nameLabel: UILabel = {
         let v = UILabel()
-        v.font = .systemFont(ofSize: 15, weight: .semibold)
-        v.textColor = UIColor(hex: "#4A3F35")
+        v.font = .systemFont(ofSize: 15)
+        v.textColor = .black
         return v
     }()
 
     private let timeLabel: UILabel = {
         let v = UILabel()
         v.font = .systemFont(ofSize: 12)
-        v.textColor = UIColor(hex: "#4A3F35").withAlphaComponent(0.6)
+        v.textColor = UIColor(hex: "#999999")
         return v
     }()
 
@@ -69,7 +66,7 @@ final class CS_PostDetailPostCell: UITableViewCell {
     private let contentLabel: UILabel = {
         let v = UILabel()
         v.font = .systemFont(ofSize: 14)
-        v.textColor = UIColor(hex: "#4A3F35")
+        v.textColor = .black
         v.numberOfLines = 0
         return v
     }()
@@ -126,24 +123,26 @@ final class CS_PostDetailPostCell: UITableViewCell {
 
         cardView.snp.makeConstraints { make in
             make.left.right.equalToSuperview().inset(16)
-            make.top.equalToSuperview().offset(4)
-            make.bottom.equalToSuperview().offset(-8)
+            make.top.equalToSuperview().offset(12)
+            make.bottom.equalToSuperview().offset(-20)
         }
 
         avatarView.snp.makeConstraints { make in
-            make.top.left.equalToSuperview().offset(12)
-            make.width.height.equalTo(40)
+            make.top.left.equalToSuperview().offset(14)
+            make.width.height.equalTo(48)
         }
 
         nameLabel.snp.makeConstraints { make in
-            make.left.equalTo(avatarView.snp.right).offset(10)
-            make.top.equalTo(avatarView).offset(2)
+            make.left.equalTo(avatarView.snp.right).offset(8)
+            make.top.equalTo(avatarView).offset(5)
+            make.height.equalTo(18)
             make.right.lessThanOrEqualTo(followButton.snp.left).offset(-8)
         }
 
         timeLabel.snp.makeConstraints { make in
             make.left.equalTo(nameLabel)
-            make.top.equalTo(nameLabel.snp.bottom).offset(2)
+            make.top.equalTo(nameLabel.snp.bottom).offset(4)
+            make.height.equalTo(15)
         }
 
         reportButton.snp.makeConstraints { make in
@@ -161,7 +160,7 @@ final class CS_PostDetailPostCell: UITableViewCell {
 
         contentLabel.snp.makeConstraints { make in
             make.top.equalTo(avatarView.snp.bottom).offset(12)
-            make.left.right.equalToSuperview().inset(12)
+            make.left.right.equalToSuperview().inset(14)
         }
 
         actionStack.snp.makeConstraints { make in
@@ -187,6 +186,16 @@ final class CS_PostDetailPostCell: UITableViewCell {
         updateFollowButton(isFollowing: post.isFollowing)
         updateLikeButton(isLiked: post.isLiked)
         updateCollectButton(isCollected: post.isCollected)
+
+        if let avatarPath = post.avatarPath, !avatarPath.isEmpty {
+            avatarView.image = avatarPath.resourceFileImage ?? avatarPath.toImage
+            avatarView.backgroundColor = avatarView.image == nil
+                ? UIColor(hex: "#D4C4A8") : .clear
+        } else {
+            avatarView.image = "info_avatar".toImage
+            avatarView.backgroundColor = avatarView.image == nil
+                ? UIColor(hex: "#D4C4A8") : .clear
+        }
     }
 
     private func updateFollowButton(isFollowing: Bool) {

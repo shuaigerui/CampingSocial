@@ -268,11 +268,7 @@ class CS_PushPostVC: CS_BaseVC {
     }
 
     private static func thumbnail(for videoURL: URL) -> UIImage? {
-        let asset = AVAsset(url: videoURL)
-        let generator = AVAssetImageGenerator(asset: asset)
-        generator.appliesPreferredTrackTransform = true
-        guard let cgImage = try? generator.copyCGImage(at: .zero, actualTime: nil) else { return nil }
-        return UIImage(cgImage: cgImage)
+        CS_VideoThumbnail.firstFrameImage(forVideoPath: videoURL.path)
     }
 
     @objc private func onBack() {

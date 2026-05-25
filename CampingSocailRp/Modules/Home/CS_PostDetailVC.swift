@@ -17,11 +17,9 @@ class CS_PostDetailVC: CS_BaseVC {
     private let galleryView = CS_PostDetailGalleryView()
     private let inputBar = CS_PostDetailInputBar()
 
+    private var postModel: PostModel
     private var post: CS_HomePost
     private var comments: [CS_PostComment]
-
-    private let imageColors: [UIColor]
-    private let imageNames: [String]
 
     private lazy var tableView: UITableView = {
         let tv = UITableView(frame: .zero, style: .plain)
@@ -39,46 +37,10 @@ class CS_PostDetailVC: CS_BaseVC {
         return tv
     }()
 
-    private let contentPanel: UIView = {
-        let v = UIView()
-        v.backgroundColor = UIColor(hex: "#F9F1C1")
-        v.layer.cornerRadius = 24
-        v.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
-        v.clipsToBounds = true
-        return v
-    }()
-
-    init(
-        post: CS_HomePost,
-        comments: [CS_PostComment] = [],
-        imageNames: [String] = []
-    ) {
-        self.post = post
-        self.comments = comments.isEmpty ? Self.defaultComments : comments
-        self.imageColors = post.imageColors
-        self.imageNames = imageNames
-        super.init(nibName: nil, bundle: nil)
-    }
-
-    init(imageColors: [UIColor] = [], imageNames: [String] = []) {
-        self.post = CS_HomePost(
-            userName: "Luoluo",
-            time: "09:08am",
-            content: "Hiking through the clouds and mist is like stepping into another world",
-            likeCount: 125,
-            commentCount: 39,
-            isFollowing: false,
-            isLiked: false,
-            isCollected: false,
-            imageColors: imageColors.isEmpty
-                ? [UIColor(hex: "#C5D4B0"), UIColor(hex: "#A8B89A"), UIColor(hex: "#8FA67E")]
-                : imageColors,
-            imagePaths: [],
-            avatarPath: nil
-        )
-        self.comments = Self.defaultComments
-        self.imageColors = self.post.imageColors
-        self.imageNames = imageNames
+    init(postModel: PostModel) {
+        self.postModel = postModel
+        self.post = postModel.toDetailDisplayPost()
+        self.comments = postModel.comments.map { $0.toPostComment() }
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -86,33 +48,39 @@ class CS_PostDetailVC: CS_BaseVC {
         fatalError("init(coder:) has not been implemented")
     }
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        (tabBarController as? CS_TabBarVC)?.setCustomTabBarHidden(true)
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        if isMovingFromParent || isBeingDismissed {
+            (tabBarController as? CS_TabBarVC)?.setCustomTabBarHidden(false)
+        }
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        bgView.isHidden = true
-        view.backgroundColor = UIColor(hex: "#F9F1C1")
+
         setupUI()
         applyGalleryData()
     }
 
     private func setupUI() {
         view.addSubview(galleryView)
-        view.addSubview(contentPanel)
-        contentPanel.addSubview(tableView)
+        view.addSubview(tableView)
         view.addSubview(inputBar)
 
         galleryView.snp.makeConstraints { make in
             make.top.left.right.equalToSuperview()
-            make.height.equalTo(galleryView.snp.width)
-        }
-
-        contentPanel.snp.makeConstraints { make in
-            make.top.equalTo(galleryView.snp.bottom).offset(-20)
-            make.left.right.equalToSuperview()
-            make.bottom.equalTo(inputBar.snp.top)
+            make.bottom.equalTo(view.safeAreaLayoutGuide.snp.top).offset(390)
         }
 
         tableView.snp.makeConstraints { make in
-            make.edges.equalToSuperview()
+            make.top.equalTo(galleryView.snp.bottom).offset(12)
+            make.left.right.equalToSuperview()
+            make.bottom.equalTo(inputBar.snp.top)
         }
 
         inputBar.snp.makeConstraints { make in
@@ -124,6 +92,10 @@ class CS_PostDetailVC: CS_BaseVC {
             self?.navigationController?.popViewController(animated: true)
         }
 
+        galleryView.onGalleryTapped = { [weak self] in
+            self?.openVideoPlayer()
+        }
+
         inputBar.onSendTapped = { [weak self] text in
             self?.appendComment(text)
         }
@@ -131,16 +103,32 @@ class CS_PostDetailVC: CS_BaseVC {
     }
 
     private func applyGalleryData() {
-        if !imageNames.isEmpty {
-            galleryView.configure(imageNames: imageNames)
-        } else {
-            galleryView.configure(imageColors: imageColors)
-        }
+        let paths = postModel.galleryImagePaths()
+        guard !paths.isEmpty else { return }
+        galleryView.configure(
+            imagePaths: paths,
+            isVideo: postModel.media.isVideo,
+            videoPath: postModel.media.videoURL
+        )
+    }
+
+    private func openVideoPlayer() {
+        guard postModel.media.isVideo else { return }
+        let videoVC = CS_VideoVC(postModel: postModel)
+        navigationController?.pushViewController(videoVC, animated: true)
     }
 
     private func appendComment(_ text: String) {
-        comments.append(CS_PostComment(content: text))
-        tableView.reloadSections(IndexSet(integer: Section.comments.rawValue), with: .automatic)
+        comments.append(CS_PostComment(
+            content: text,
+            avatarImageName: CS_CurrentUser.shared.user?.avatarURL
+        ))
+        postModel.commentCount += 1
+        post.commentCount = postModel.commentCount
+        tableView.reloadSections(
+            [Section.comments.rawValue, Section.post.rawValue],
+            with: .automatic
+        )
         scrollCommentsToBottom()
     }
 
@@ -150,11 +138,11 @@ class CS_PostDetailVC: CS_BaseVC {
         tableView.scrollToRow(at: indexPath, at: .bottom, animated: true)
     }
 
-    private static let defaultComments: [CS_PostComment] = [
-        CS_PostComment(content: "You sang so beautifully. I'll learn from you."),
-        CS_PostComment(content: "You sang so beautifully. I'll learn from you."),
-        CS_PostComment(content: "You sang so beautifully. I'll learn from you.")
-    ]
+    private func syncPostModelFromDisplayPost() {
+        postModel.isFollowing = post.isFollowing
+        postModel.isLiked = post.isLiked
+        postModel.isCollected = post.isCollected
+    }
 }
 
 // MARK: - UITableView
@@ -201,16 +189,19 @@ extension CS_PostDetailVC: UITableViewDataSource, UITableViewDelegate {
         cell.onFollowTapped = { [weak self] in
             guard let self else { return }
             self.post.isFollowing.toggle()
+            self.syncPostModelFromDisplayPost()
             self.tableView.reloadSections(IndexSet(integer: Section.post.rawValue), with: .none)
         }
         cell.onLikeTapped = { [weak self] in
             guard let self else { return }
             self.post.isLiked.toggle()
+            self.syncPostModelFromDisplayPost()
             self.tableView.reloadSections(IndexSet(integer: Section.post.rawValue), with: .none)
         }
         cell.onCollectTapped = { [weak self] in
             guard let self else { return }
             self.post.isCollected.toggle()
+            self.syncPostModelFromDisplayPost()
             self.tableView.reloadSections(IndexSet(integer: Section.post.rawValue), with: .none)
         }
         cell.onReportTapped = { [weak self] in

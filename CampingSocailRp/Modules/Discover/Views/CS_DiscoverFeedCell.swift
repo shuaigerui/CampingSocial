@@ -94,6 +94,8 @@ final class CS_DiscoverFeedCell: UITableViewCell {
         return btn
     }()
 
+    private var coverLoadVideoPath: String?
+
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         setupUI()
@@ -101,6 +103,11 @@ final class CS_DiscoverFeedCell: UITableViewCell {
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        coverLoadVideoPath = nil
     }
 
     private func setupUI() {
@@ -178,23 +185,58 @@ final class CS_DiscoverFeedCell: UITableViewCell {
         }
     }
 
-    func configure(with item: CS_DiscoverFeedItem, showsDelete: Bool = false) {
-        if let path = item.coverImagePath,
-           let image = path.resourceFileImage ?? path.toImage {
+    func configure(
+        with item: CS_DiscoverFeedItem,
+        showsDelete: Bool = false,
+        showsFollowButton: Bool = true
+    ) {
+        coverLoadVideoPath = item.videoPath
+        if let videoPath = item.videoPath, !videoPath.isEmpty {
+            coverImageView.image = nil
+            coverImageView.backgroundColor = UIColor(hex: "#C5D4B0")
+            if let cached = CS_VideoThumbnail.cachedImage(forVideoPath: videoPath) {
+                coverImageView.image = cached
+                coverImageView.backgroundColor = .clear
+            } else {
+                CS_VideoThumbnail.loadFirstFrame(forVideoPath: videoPath) { [weak self] image in
+                    guard let self, self.coverLoadVideoPath == videoPath else { return }
+                    self.coverImageView.image = image
+                    self.coverImageView.backgroundColor = image == nil
+                        ? UIColor(hex: "#C5D4B0") : .clear
+                }
+            }
+        } else if let path = item.coverImagePath,
+                  let image = path.resourceFileImage ?? path.toImage {
             coverImageView.image = image
+            coverImageView.backgroundColor = .clear
         } else {
             coverImageView.image = item.coverImageName.toImage
+            coverImageView.backgroundColor = .clear
         }
         contentLabel.text = item.content
         userNameLabel.text = item.userName.uppercased()
-        updateFollowButton(isFollowing: item.isFollowing)
+        followButton.isHidden = !showsFollowButton
+        if showsFollowButton {
+            updateFollowButton(isFollowing: item.isFollowing)
+        }
         updateCollectButton(isCollected: item.isCollected)
-        setShowsDeleteButton(showsDelete)
+        setShowsDeleteButton(showsDelete, showsFollowButton: showsFollowButton)
+
+        if let avatarPath = item.avatarPath, !avatarPath.isEmpty {
+            avatarView.image = avatarPath.resourceFileImage ?? avatarPath.toImage
+            avatarView.backgroundColor = avatarView.image == nil
+                ? UIColor(hex: "#D4C4A8") : .clear
+        } else {
+            avatarView.image = "info_avatar".toImage
+            avatarView.backgroundColor = avatarView.image == nil
+                ? UIColor(hex: "#D4C4A8") : .clear
+        }
     }
 
-    private func setShowsDeleteButton(_ shows: Bool) {
+    private func setShowsDeleteButton(_ shows: Bool, showsFollowButton: Bool = true) {
         reportButton.isHidden = shows
         deleteButton.isHidden = !shows
+        guard showsFollowButton else { return }
         followButton.snp.remakeConstraints { make in
             make.width.equalTo(70)
             make.height.equalTo(27)

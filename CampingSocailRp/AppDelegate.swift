@@ -23,14 +23,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         ToastManager.shared.position = .center
         
         initializeWindow()
-        
+
         return true
     }
 
     private func initializeWindow() {
-
+        CS_CurrentUser.shared.restore()
         window = UIWindow(frame: UIScreen.main.bounds)
-        window?.rootViewController = CS_TabBarVC()
+        window?.rootViewController = CS_CurrentUser.shared.rootViewController()
         window?.makeKeyAndVisible()
     }
 }

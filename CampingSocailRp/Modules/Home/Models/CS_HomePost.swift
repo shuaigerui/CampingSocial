@@ -11,8 +11,8 @@ struct CS_HomePost {
     let userName: String
     let time: String
     let content: String
-    let likeCount: Int
-    let commentCount: Int
+    var likeCount: Int
+    var commentCount: Int
     var isFollowing: Bool
     var isLiked: Bool
     var isCollected: Bool

@@ -125,14 +125,8 @@ class CS_SettingVC: CS_BaseVC {
     }
 
     private func performLogout() {
-        guard let window = view.window ?? UIApplication.shared.connectedScenes
-            .compactMap({ $0 as? UIWindowScene })
-            .flatMap(\.windows)
-            .first(where: { $0.isKeyWindow }) else { return }
-        let nav = UINavigationController(rootViewController: CS_WelcomeVC())
-        nav.navigationBar.isHidden = true
-        window.rootViewController = nav
-        UIView.transition(with: window, duration: 0.25, options: .transitionCrossDissolve, animations: nil)
+        CS_CurrentUser.shared.logout()
+        CS_CurrentUser.shared.switchRoot(on: view.window)
     }
 }
 
