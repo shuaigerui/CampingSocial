@@ -119,12 +119,17 @@ class CS_PostDetailVC: CS_BaseVC {
     }
 
     private func appendComment(_ text: String) {
-        comments.append(CS_PostComment(
-            content: text,
-            userId: CS_CurrentUser.shared.user?.userId,
-            avatarImageName: CS_CurrentUser.shared.user?.avatarURL
-        ))
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        let newComment = UserData.appendComment(
+            postId: postModel.postId,
+            content: trimmed,
+            user: CS_CurrentUser.shared.user
+        )
+        postModel.comments.append(newComment)
         postModel.commentCount += 1
+        comments.append(newComment.toPostComment())
         post.commentCount = postModel.commentCount
         tableView.reloadSections(
             [Section.comments.rawValue, Section.post.rawValue],
@@ -200,18 +205,34 @@ extension CS_PostDetailVC: UITableViewDataSource, UITableViewDelegate {
         }
         cell.onLikeTapped = { [weak self] in
             guard let self else { return }
-            self.post.isLiked.toggle()
-            self.syncPostModelFromDisplayPost()
+            let result = UserData.toggleLike(
+                postId: self.postModel.postId,
+                isLiked: self.post.isLiked,
+                likeCount: self.post.likeCount
+            )
+            self.post.isLiked = result.isLiked
+            self.post.likeCount = result.likeCount
+            self.postModel.isLiked = result.isLiked
+            self.postModel.likeCount = result.likeCount
             self.tableView.reloadSections(IndexSet(integer: Section.post.rawValue), with: .none)
         }
         cell.onCollectTapped = { [weak self] in
             guard let self else { return }
-            self.post.isCollected.toggle()
-            self.syncPostModelFromDisplayPost()
+            let collected = UserData.toggleCollect(
+                postId: self.postModel.postId,
+                isCollected: self.post.isCollected
+            )
+            self.post.isCollected = collected
+            self.postModel.isCollected = collected
             self.tableView.reloadSections(IndexSet(integer: Section.post.rawValue), with: .none)
         }
         cell.onReportTapped = { [weak self] in
-            self?.navigationController?.pushViewController(CS_ReportVC(), animated: true)
+            guard let self else { return }
+            let reportVC = CS_ReportVC(postId: self.postModel.postId)
+            reportVC.onReportSubmitted = { [weak self] in
+                self?.navigationController?.popViewController(animated: true)
+            }
+            self.navigationController?.pushViewController(reportVC, animated: true)
         }
         cell.onAvatarTapped = { [weak self] in
             guard let self else { return }

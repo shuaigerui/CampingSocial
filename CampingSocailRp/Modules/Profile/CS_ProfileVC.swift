@@ -9,6 +9,7 @@ import UIKit
 
 class CS_ProfileVC: CS_BaseVC {
 
+    private var postModels: [PostModel] = []
     private var posts: [CS_ProfilePostItem] = []
 
     private lazy var tableView: UITableView = {
@@ -41,9 +42,14 @@ class CS_ProfileVC: CS_BaseVC {
     }
 
     private func loadData() {
-        guard let user = CS_CurrentUser.shared.user else { return }
+        guard var user = CS_CurrentUser.shared.user else { return }
+
+        user.followingCount = CS_UserListStorage.count(for: .following)
+        user.followersCount = CS_UserListStorage.count(for: .followers)
+        user.friendsCount = CS_UserListStorage.count(for: .friends)
 
         let userPosts = UserData.posts(forUserId: user.userId)
+        postModels = userPosts
         posts = userPosts.map { $0.toProfilePostItem() }
 
         headerView.configure(with: user, postCount: userPosts.count)
@@ -70,6 +76,22 @@ class CS_ProfileVC: CS_BaseVC {
         headerView.onGemCardTapped = { [weak self] in
             self?.navigationController?.pushViewController(CS_RechargeVC(), animated: true)
         }
+        headerView.onFollowingTapped = { [weak self] in
+            self?.pushUserList(.following)
+        }
+        headerView.onFollowersTapped = { [weak self] in
+            self?.pushUserList(.followers)
+        }
+        headerView.onFriendsTapped = { [weak self] in
+            self?.pushUserList(.friends)
+        }
+        headerView.onFriendRequestTapped = { [weak self] in
+            self?.pushUserList(.friendRequest)
+        }
+    }
+
+    private func pushUserList(_ kind: CS_UserListKind) {
+        navigationController?.pushViewController(CS_UserListVC(kind: kind), animated: true)
     }
 
 }
@@ -112,28 +134,49 @@ extension CS_ProfileVC: UITableViewDataSource, UITableViewDelegate {
 
     private func bindImageCellActions(_ cell: CS_HomePostCell, indexPath: IndexPath) {
         cell.onLikeTapped = { [weak self] in
-            guard let self, var post = self.posts[indexPath.row].imagePost else { return }
-            post.isLiked.toggle()
-            self.posts[indexPath.row].imagePost = post
-            self.tableView.reloadRows(at: [indexPath], with: .none)
+            self?.toggleLike(at: indexPath)
         }
         cell.onCollectTapped = { [weak self] in
-            guard let self, var post = self.posts[indexPath.row].imagePost else { return }
-            post.isCollected.toggle()
-            self.posts[indexPath.row].imagePost = post
-            self.tableView.reloadRows(at: [indexPath], with: .none)
+            self?.toggleCollect(at: indexPath)
         }
         cell.onDeleteTapped = { [weak self] in
             self?.deletePost(at: indexPath)
         }
     }
 
+    private func toggleLike(at indexPath: IndexPath) {
+        guard indexPath.row < postModels.count else { return }
+        var model = postModels[indexPath.row]
+        let result = UserData.toggleLike(
+            postId: model.postId,
+            isLiked: model.isLiked,
+            likeCount: model.likeCount
+        )
+        model.isLiked = result.isLiked
+        model.likeCount = result.likeCount
+        postModels[indexPath.row] = model
+        posts[indexPath.row] = model.toProfilePostItem()
+        tableView.reloadRows(at: [indexPath], with: .none)
+    }
+
+    private func toggleCollect(at indexPath: IndexPath) {
+        guard indexPath.row < postModels.count else { return }
+        var model = postModels[indexPath.row]
+        model.isCollected = UserData.toggleCollect(
+            postId: model.postId,
+            isCollected: model.isCollected
+        )
+        postModels[indexPath.row] = model
+        posts[indexPath.row] = model.toProfilePostItem()
+        tableView.reloadRows(at: [indexPath], with: .none)
+    }
+
     private func bindVideoCellActions(_ cell: CS_DiscoverFeedCell, indexPath: IndexPath) {
+        cell.onLikeTapped = { [weak self] in
+            self?.toggleLike(at: indexPath)
+        }
         cell.onCollectTapped = { [weak self] in
-            guard let self, var post = self.posts[indexPath.row].videoPost else { return }
-            post.isCollected.toggle()
-            self.posts[indexPath.row].videoPost = post
-            self.tableView.reloadRows(at: [indexPath], with: .none)
+            self?.toggleCollect(at: indexPath)
         }
         cell.onDeleteTapped = { [weak self] in
             self?.deletePost(at: indexPath)

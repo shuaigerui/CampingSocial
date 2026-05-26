@@ -6,8 +6,12 @@
 //
 
 import UIKit
+import Toast_Swift
 
 class CS_ReportVC: CS_BaseVC {
+
+    private let postId: String?
+    var onReportSubmitted: (() -> Void)?
 
     private let reasons = [
         "Content error",
@@ -54,6 +58,15 @@ class CS_ReportVC: CS_BaseVC {
         return btn
     }()
 
+    init(postId: String? = nil) {
+        self.postId = postId
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         (tabBarController as? CS_TabBarVC)?.setCustomTabBarHidden(true)
@@ -65,7 +78,7 @@ class CS_ReportVC: CS_BaseVC {
             (tabBarController as? CS_TabBarVC)?.setCustomTabBarHidden(false)
         }
     }
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
@@ -142,6 +155,15 @@ class CS_ReportVC: CS_BaseVC {
     }
 
     @objc private func onSubmit() {
+        let shouldNotify = postId != nil
+        if let postId {
+            UserData.markPostReported(postId: postId)
+            view.makeToast("Report submitted")
+        }
         navigationController?.popViewController(animated: true)
+        guard shouldNotify else { return }
+        DispatchQueue.main.async { [weak self] in
+            self?.onReportSubmitted?()
+        }
     }
 }

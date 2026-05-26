@@ -1,0 +1,193 @@
+//
+//  CS_UserListVC.swift
+//  CampingSocailRp
+//
+//  Created by  mac on 2026/5/26.
+//
+
+import UIKit
+import Toast_Swift
+
+class CS_UserListVC: CS_BaseVC {
+
+    private let kind: CS_UserListKind
+    private var users: [UserModel] = []
+
+    private lazy var backButton: UIButton = {
+        let btn = UIButton(type: .custom)
+        btn.setImage("common_back".toImage, for: .normal)
+        btn.backgroundColor = UIColor.black.withAlphaComponent(0.35)
+        btn.layer.cornerRadius = 12
+        btn.clipsToBounds = true
+        btn.addTarget(self, action: #selector(onBack), for: .touchUpInside)
+        return btn
+    }()
+
+    private let titleLabel: UILabel = {
+        let v = UILabel()
+        v.font = .systemFont(ofSize: 18, weight: .semibold)
+        v.textColor = .white
+        v.textAlignment = .center
+        return v
+    }()
+
+    private lazy var tableView: UITableView = {
+        let tv = UITableView(frame: .zero, style: .plain)
+        tv.backgroundColor = .clear
+        tv.separatorStyle = .none
+        tv.showsVerticalScrollIndicator = false
+        tv.contentInsetAdjustmentBehavior = .never
+        tv.dataSource = self
+        tv.delegate = self
+        tv.rowHeight = 76
+        tv.register(CS_UserListCell.self, forCellReuseIdentifier: CS_UserListCell.reuseID)
+        return tv
+    }()
+
+    private let emptyLabel: UILabel = {
+        let v = UILabel()
+        v.text = "No users yet"
+        v.font = .systemFont(ofSize: 15)
+        v.textColor = UIColor.white.withAlphaComponent(0.8)
+        v.textAlignment = .center
+        v.isHidden = true
+        return v
+    }()
+
+    init(kind: CS_UserListKind) {
+        self.kind = kind
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        (tabBarController as? CS_TabBarVC)?.setCustomTabBarHidden(true)
+        reloadData()
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        if isMovingFromParent || isBeingDismissed {
+            (tabBarController as? CS_TabBarVC)?.setCustomTabBarHidden(false)
+        }
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        titleLabel.text = kind.title
+        setupUI()
+        reloadData()
+    }
+
+    private func setupUI() {
+        view.addSubview(backButton)
+        view.addSubview(titleLabel)
+        view.addSubview(tableView)
+        view.addSubview(emptyLabel)
+
+        backButton.snp.makeConstraints { make in
+            make.top.equalTo(view.safeAreaLayoutGuide).offset(8)
+            make.left.equalToSuperview().offset(16)
+            make.width.height.equalTo(40)
+        }
+
+        titleLabel.snp.makeConstraints { make in
+            make.centerY.equalTo(backButton)
+            make.centerX.equalToSuperview()
+            make.left.greaterThanOrEqualTo(backButton.snp.right).offset(8)
+            make.right.lessThanOrEqualToSuperview().offset(-16)
+        }
+
+        tableView.snp.makeConstraints { make in
+            make.top.equalTo(backButton.snp.bottom).offset(20)
+            make.left.right.bottom.equalToSuperview()
+        }
+
+        emptyLabel.snp.makeConstraints { make in
+            make.center.equalTo(tableView)
+        }
+    }
+
+    private func reloadData() {
+        users = CS_UserListStorage.users(for: kind)
+        emptyLabel.isHidden = !users.isEmpty
+        tableView.reloadData()
+    }
+
+    private func handleAction(for user: UserModel, at indexPath: IndexPath) {
+        switch kind {
+        case .friendRequest:
+            CS_UserListStorage.acceptFriendRequest(userId: user.userId)
+            view.makeToast("Accepted \(user.userName)")
+            removeUser(at: indexPath)
+        case .following:
+            CS_UserListStorage.unfollow(userId: user.userId)
+            view.makeToast("Unfollowed \(user.userName)")
+            removeUser(at: indexPath)
+        case .friends:
+            navigationController?.pushViewController(CS_ChatRoomVC(peer: user), animated: true)
+        case .followers:
+            CS_UserListStorage.follow(userId: user.userId)
+            view.makeToast("Following \(user.userName)")
+            if let cell = tableView.cellForRow(at: indexPath) as? CS_UserListCell {
+                cell.configure(user: user, actionStyle: .image("home_following"))
+            }
+        case .blockList:
+            CS_UserListStorage.unblock(userId: user.userId)
+            view.makeToast("Removed \(user.userName)")
+            removeUser(at: indexPath)
+        }
+    }
+
+    private func removeUser(at indexPath: IndexPath) {
+        guard users.indices.contains(indexPath.row) else { return }
+        users.remove(at: indexPath.row)
+        tableView.deleteRows(at: [indexPath], with: .automatic)
+        emptyLabel.isHidden = !users.isEmpty
+    }
+
+    @objc private func onBack() {
+        navigationController?.popViewController(animated: true)
+    }
+}
+
+// MARK: - UITableView
+
+extension CS_UserListVC: UITableViewDataSource, UITableViewDelegate {
+
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        users.count
+    }
+
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        guard let cell = tableView.dequeueReusableCell(
+            withIdentifier: CS_UserListCell.reuseID,
+            for: indexPath
+        ) as? CS_UserListCell else {
+            return UITableViewCell()
+        }
+        let user = users[indexPath.row]
+        var style = kind.actionStyle
+        if kind == .followers, CS_UserListStorage.userIds(for: .following).contains(user.userId) {
+            style = .image("home_following")
+        }
+        cell.configure(user: user, actionStyle: style)
+        cell.onActionTapped = { [weak self] in
+            self?.handleAction(for: user, at: indexPath)
+        }
+        return cell
+    }
+
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+        let user = users[indexPath.row]
+        navigationController?.pushViewController(
+            CS_PersonVC(user: user, isFollowing: false),
+            animated: true
+        )
+    }
+}

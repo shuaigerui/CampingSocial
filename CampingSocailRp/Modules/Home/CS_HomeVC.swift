@@ -121,24 +121,55 @@ extension CS_HomeVC: UITableViewDataSource, UITableViewDelegate {
             self.tableView.reloadRows(at: [indexPath], with: .none)
         }
         cell.onLikeTapped = { [weak self] in
-            guard let self, var post = self.posts[indexPath.row].imagePost else { return }
-            post.isLiked.toggle()
-            self.posts[indexPath.row].imagePost = post
-            self.tableView.reloadRows(at: [indexPath], with: .none)
+            self?.toggleLike(at: indexPath)
         }
         cell.onCollectTapped = { [weak self] in
-            guard let self, var post = self.posts[indexPath.row].imagePost else { return }
-            post.isCollected.toggle()
-            self.posts[indexPath.row].imagePost = post
-            self.tableView.reloadRows(at: [indexPath], with: .none)
+            self?.toggleCollect(at: indexPath)
         }
         cell.onReportTapped = { [weak self] in
-            self?.navigationController?.pushViewController(CS_ReportVC(), animated: true)
+            self?.openReport(at: indexPath)
         }
         cell.onAvatarTapped = { [weak self] in
             guard let self, indexPath.row < self.postModels.count else { return }
             self.pushPerson(post: self.postModels[indexPath.row])
         }
+    }
+
+    private func openReport(at indexPath: IndexPath) {
+        guard indexPath.row < postModels.count else { return }
+        let postId = postModels[indexPath.row].postId
+        let reportVC = CS_ReportVC(postId: postId)
+        reportVC.onReportSubmitted = { [weak self] in
+            self?.loadData()
+        }
+        navigationController?.pushViewController(reportVC, animated: true)
+    }
+
+    private func toggleLike(at indexPath: IndexPath) {
+        guard indexPath.row < postModels.count else { return }
+        var model = postModels[indexPath.row]
+        let result = UserData.toggleLike(
+            postId: model.postId,
+            isLiked: model.isLiked,
+            likeCount: model.likeCount
+        )
+        model.isLiked = result.isLiked
+        model.likeCount = result.likeCount
+        postModels[indexPath.row] = model
+        posts[indexPath.row] = model.toProfilePostItem()
+        tableView.reloadRows(at: [indexPath], with: .none)
+    }
+
+    private func toggleCollect(at indexPath: IndexPath) {
+        guard indexPath.row < postModels.count else { return }
+        var model = postModels[indexPath.row]
+        model.isCollected = UserData.toggleCollect(
+            postId: model.postId,
+            isCollected: model.isCollected
+        )
+        postModels[indexPath.row] = model
+        posts[indexPath.row] = model.toProfilePostItem()
+        tableView.reloadRows(at: [indexPath], with: .none)
     }
 
     private func bindVideoCellActions(_ cell: CS_DiscoverFeedCell, indexPath: IndexPath) {
@@ -148,14 +179,14 @@ extension CS_HomeVC: UITableViewDataSource, UITableViewDelegate {
             self.posts[indexPath.row].videoPost = post
             self.tableView.reloadRows(at: [indexPath], with: .none)
         }
+        cell.onLikeTapped = { [weak self] in
+            self?.toggleLike(at: indexPath)
+        }
         cell.onCollectTapped = { [weak self] in
-            guard let self, var post = self.posts[indexPath.row].videoPost else { return }
-            post.isCollected.toggle()
-            self.posts[indexPath.row].videoPost = post
-            self.tableView.reloadRows(at: [indexPath], with: .none)
+            self?.toggleCollect(at: indexPath)
         }
         cell.onReportTapped = { [weak self] in
-            self?.navigationController?.pushViewController(CS_ReportVC(), animated: true)
+            self?.openReport(at: indexPath)
         }
         cell.onPlayTapped = {}
         cell.onAvatarTapped = { [weak self] in

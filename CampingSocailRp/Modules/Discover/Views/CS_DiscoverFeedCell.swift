@@ -12,6 +12,7 @@ final class CS_DiscoverFeedCell: UITableViewCell {
     static let reuseID = "CS_DiscoverFeedCell"
 
     var onFollowTapped: (() -> Void)?
+    var onLikeTapped: (() -> Void)?
     var onCollectTapped: (() -> Void)?
     var onReportTapped: (() -> Void)?
     var onPlayTapped: (() -> Void)?
@@ -90,10 +91,31 @@ final class CS_DiscoverFeedCell: UITableViewCell {
         return v
     }()
 
+    private lazy var likeButton: UIButton = {
+        let btn = UIButton(type: .custom)
+        btn.addTarget(self, action: #selector(likeTapped), for: .touchUpInside)
+        return btn
+    }()
+
+    private let likeCountLabel: UILabel = {
+        let v = UILabel()
+        v.font = .systemFont(ofSize: 13, weight: .medium)
+        v.textColor = UIColor(hex: "#4A3F35")
+        return v
+    }()
+
     private lazy var collectButton: UIButton = {
         let btn = UIButton(type: .custom)
         btn.addTarget(self, action: #selector(collectTapped), for: .touchUpInside)
         return btn
+    }()
+
+    private let bottomActionStack: UIStackView = {
+        let stack = UIStackView()
+        stack.axis = .horizontal
+        stack.spacing = 16
+        stack.alignment = .center
+        return stack
     }()
 
     private var coverLoadVideoPath: String?
@@ -129,7 +151,14 @@ final class CS_DiscoverFeedCell: UITableViewCell {
         cardView.addSubview(contentLabel)
         cardView.addSubview(avatarView)
         cardView.addSubview(userNameLabel)
-        cardView.addSubview(collectButton)
+        cardView.addSubview(bottomActionStack)
+
+        let likeWrap = UIStackView(arrangedSubviews: [likeButton, likeCountLabel])
+        likeWrap.axis = .horizontal
+        likeWrap.spacing = 4
+        likeWrap.alignment = .center
+        bottomActionStack.addArrangedSubview(likeWrap)
+        bottomActionStack.addArrangedSubview(collectButton)
 
         cardView.snp.makeConstraints { make in
             make.left.right.equalToSuperview().inset(16)
@@ -183,9 +212,16 @@ final class CS_DiscoverFeedCell: UITableViewCell {
             make.left.equalTo(avatarView.snp.right).offset(8)
         }
 
-        collectButton.snp.makeConstraints { make in
+        bottomActionStack.snp.makeConstraints { make in
             make.centerY.equalTo(avatarView)
             make.right.equalToSuperview().offset(-12)
+        }
+
+        likeButton.snp.makeConstraints { make in
+            make.width.height.equalTo(24)
+        }
+
+        collectButton.snp.makeConstraints { make in
             make.width.height.equalTo(24)
         }
     }
@@ -224,6 +260,8 @@ final class CS_DiscoverFeedCell: UITableViewCell {
         if showsFollowButton {
             updateFollowButton(isFollowing: item.isFollowing)
         }
+        likeCountLabel.text = "\(item.likeCount)"
+        updateLikeButton(isLiked: item.isLiked)
         updateCollectButton(isCollected: item.isCollected)
         setShowsDeleteButton(showsDelete, showsFollowButton: showsFollowButton)
 
@@ -260,6 +298,11 @@ final class CS_DiscoverFeedCell: UITableViewCell {
         followButton.setImage(name.toImage, for: .normal)
     }
 
+    private func updateLikeButton(isLiked: Bool) {
+        let name = isLiked ? "home_liked" : "home_like"
+        likeButton.setImage(name.toImage, for: .normal)
+    }
+
     private func updateCollectButton(isCollected: Bool) {
         let name = isCollected ? "home_collected" : "home_collect"
         collectButton.setImage(name.toImage, for: .normal)
@@ -267,6 +310,7 @@ final class CS_DiscoverFeedCell: UITableViewCell {
 
     @objc private func avatarTapped() { onAvatarTapped?() }
     @objc private func followTapped() { onFollowTapped?() }
+    @objc private func likeTapped() { onLikeTapped?() }
     @objc private func collectTapped() { onCollectTapped?() }
     @objc private func reportTapped() { onReportTapped?() }
     @objc private func playTapped() { onPlayTapped?() }

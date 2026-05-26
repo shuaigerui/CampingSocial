@@ -214,10 +214,7 @@ class CS_ChatRoomVC: CS_BaseVC {
     }
 
     @objc private func onVideo() {
-        navigationController?.pushViewController(
-            CS_PersonVC(user: peer, isFollowing: false),
-            animated: true
-        )
+        CS_VideoRoomVC.open(from: self, peer: peer)
     }
 
     @objc private func onGallery() {

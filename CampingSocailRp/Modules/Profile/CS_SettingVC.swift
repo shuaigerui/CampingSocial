@@ -118,6 +118,10 @@ class CS_SettingVC: CS_BaseVC {
 
     private func handleItem(at index: Int) {
         guard index < items.count else { return }
+        if items[index].title == "Blacklist" {
+            navigationController?.pushViewController(CS_UserListVC(kind: .blockList), animated: true)
+            return
+        }
         if items[index].style == .logout {
             confirmLogout()
         }

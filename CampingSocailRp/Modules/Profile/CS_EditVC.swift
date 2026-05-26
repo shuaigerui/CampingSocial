@@ -220,21 +220,26 @@ class CS_EditVC: CS_BaseVC {
     @objc private func onSave() {
         let userName = nameField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let signature = bioTextView.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let avatarPath = pendingAvatarPath
+            ?? CS_CurrentUser.shared.user?.avatarURL
+            ?? "info_avatar"
 
         guard !userName.isEmpty else {
             view.makeToast("Please enter your name")
             return
         }
 
+        let finalSignature = signature.isEmpty ? "Personal signature~" : signature
         guard CS_CurrentUser.shared.updateProfile(
             userName: userName,
-            signature: signature.isEmpty ? "Personal signature~" : signature,
-            avatarURL: pendingAvatarPath
+            signature: finalSignature,
+            avatarURL: avatarPath
         ) else {
             view.makeToast("Unable to save profile")
             return
         }
 
+        view.makeToast("Profile saved")
         navigationController?.popViewController(animated: true)
     }
 }

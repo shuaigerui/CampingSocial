@@ -12,6 +12,10 @@ class CS_ProfileHeaderView: UIView {
     var onSettingsTapped: (() -> Void)?
     var onEditAvatarTapped: (() -> Void)?
     var onGemCardTapped: (() -> Void)?
+    var onFollowingTapped: (() -> Void)?
+    var onFollowersTapped: (() -> Void)?
+    var onFriendsTapped: (() -> Void)?
+    var onFriendRequestTapped: (() -> Void)?
 
     private let titleLabel: UILabel = {
         let v = UILabel()
@@ -142,9 +146,9 @@ class CS_ProfileHeaderView: UIView {
         userCardView.addSubview(signatureLabel)
         userCardView.addSubview(statsStack)
 
-        statsStack.addArrangedSubview(makeStatItem(value: "999", title: "Following"))
-        statsStack.addArrangedSubview(makeStatItem(value: "999", title: "Followers"))
-        statsStack.addArrangedSubview(makeStatItem(value: "999", title: "Friends"))
+        statsStack.addArrangedSubview(makeStatItem(value: "999", title: "Following", action: #selector(followingTapped)))
+        statsStack.addArrangedSubview(makeStatItem(value: "999", title: "Followers", action: #selector(followersTapped)))
+        statsStack.addArrangedSubview(makeStatItem(value: "999", title: "Friends", action: #selector(friendsTapped)))
 
         gemCardView.addSubview(gemsTitleLabel)
         gemCardView.addSubview(gemsCountLabel)
@@ -231,7 +235,7 @@ class CS_ProfileHeaderView: UIView {
         }
     }
 
-    private func makeStatItem(value: String, title: String) -> UIStackView {
+    private func makeStatItem(value: String, title: String, action: Selector) -> UIStackView {
         let valueLabel = UILabel()
         valueLabel.text = value
         valueLabel.font = .systemFont(ofSize: 16, weight: .bold)
@@ -248,6 +252,9 @@ class CS_ProfileHeaderView: UIView {
         stack.axis = .vertical
         stack.spacing = 4
         stack.alignment = .center
+        stack.isUserInteractionEnabled = true
+        let tap = UITapGestureRecognizer(target: self, action: action)
+        stack.addGestureRecognizer(tap)
         return stack
     }
 
@@ -271,14 +278,27 @@ class CS_ProfileHeaderView: UIView {
         }
 
         statsStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        let requestCount = CS_UserListStorage.count(for: .friendRequest)
         statsStack.addArrangedSubview(
-            makeStatItem(value: "\(user.followingCount)", title: "Following")
+            makeStatItem(
+                value: "\(user.followingCount)",
+                title: "Following",
+                action: #selector(followingTapped)
+            )
         )
         statsStack.addArrangedSubview(
-            makeStatItem(value: "\(user.followersCount)", title: "Followers")
+            makeStatItem(
+                value: "\(user.followersCount)",
+                title: "Followers",
+                action: #selector(followersTapped)
+            )
         )
         statsStack.addArrangedSubview(
-            makeStatItem(value: "\(user.friendsCount)", title: "Friends")
+            makeStatItem(
+                value: "\(user.friendsCount)",
+                title: requestCount > 0 ? "Friends(\(requestCount))" : "Friends",
+                action: #selector(friendsTapped)
+            )
         )
     }
 
@@ -292,5 +312,21 @@ class CS_ProfileHeaderView: UIView {
 
     @objc private func gemCardTapped() {
         onGemCardTapped?()
+    }
+
+    @objc private func followingTapped() {
+        onFollowingTapped?()
+    }
+
+    @objc private func followersTapped() {
+        onFollowersTapped?()
+    }
+
+    @objc private func friendsTapped() {
+        if CS_UserListStorage.count(for: .friendRequest) > 0 {
+            onFriendRequestTapped?()
+        } else {
+            onFriendsTapped?()
+        }
     }
 }

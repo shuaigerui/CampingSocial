@@ -134,10 +134,10 @@ extension CS_DiscoverVC: UITableViewDataSource, UITableViewDelegate {
             self?.toggleImageLike(at: indexPath)
         }
         cell.onCollectTapped = { [weak self] in
-            self?.toggleImageCollect(at: indexPath)
+            self?.toggleCollect(at: indexPath)
         }
         cell.onReportTapped = { [weak self] in
-            self?.navigationController?.pushViewController(CS_ReportVC(), animated: true)
+            self?.openReport(at: indexPath)
         }
         cell.onAvatarTapped = { [weak self] in
             guard let self else { return }
@@ -147,15 +147,29 @@ extension CS_DiscoverVC: UITableViewDataSource, UITableViewDelegate {
         }
     }
 
+    private func openReport(at indexPath: IndexPath) {
+        let models = displayPostModels
+        guard indexPath.row < models.count else { return }
+        let postId = models[indexPath.row].postId
+        let reportVC = CS_ReportVC(postId: postId)
+        reportVC.onReportSubmitted = { [weak self] in
+            self?.loadData()
+        }
+        navigationController?.pushViewController(reportVC, animated: true)
+    }
+
     private func bindVideoCellActions(_ cell: CS_DiscoverFeedCell, indexPath: IndexPath) {
         cell.onFollowTapped = { [weak self] in
             self?.toggleVideoFollow(at: indexPath)
         }
+        cell.onLikeTapped = { [weak self] in
+            self?.toggleVideoLike(at: indexPath)
+        }
         cell.onCollectTapped = { [weak self] in
-            self?.toggleVideoCollect(at: indexPath)
+            self?.toggleCollect(at: indexPath)
         }
         cell.onReportTapped = { [weak self] in
-            self?.navigationController?.pushViewController(CS_ReportVC(), animated: true)
+            self?.openReport(at: indexPath)
         }
         cell.onPlayTapped = {}
         cell.onAvatarTapped = { [weak self] in
@@ -182,15 +196,59 @@ extension CS_DiscoverVC: UITableViewDataSource, UITableViewDelegate {
     }
 
     private func toggleImageLike(at indexPath: IndexPath) {
-        updateItem(at: indexPath) { item in
-            item.imagePost?.isLiked.toggle()
-        }
+        toggleLike(at: indexPath)
     }
 
-    private func toggleImageCollect(at indexPath: IndexPath) {
-        updateItem(at: indexPath) { item in
-            item.imagePost?.isCollected.toggle()
+    private func toggleVideoLike(at indexPath: IndexPath) {
+        toggleLike(at: indexPath)
+    }
+
+    private func toggleLike(at indexPath: IndexPath) {
+        let models = displayPostModels
+        guard indexPath.row < models.count else { return }
+        let postId = models[indexPath.row].postId
+        let result = UserData.toggleLike(
+            postId: postId,
+            isLiked: models[indexPath.row].isLiked,
+            likeCount: models[indexPath.row].likeCount
+        )
+        syncLikeState(postId: postId, isLiked: result.isLiked, likeCount: result.likeCount)
+        tableView.reloadRows(at: [indexPath], with: .none)
+    }
+
+    private func syncLikeState(postId: String, isLiked: Bool, likeCount: Int) {
+        func apply(to models: inout [PostModel]) {
+            guard let index = models.firstIndex(where: { $0.postId == postId }) else { return }
+            models[index].isLiked = isLiked
+            models[index].likeCount = likeCount
         }
+        apply(to: &forYouPostModels)
+        apply(to: &followingPostModels)
+        forYouItems = forYouPostModels.map { $0.toProfilePostItem() }
+        followingItems = followingPostModels.map { $0.toProfilePostItem() }
+    }
+
+    private func toggleCollect(at indexPath: IndexPath) {
+        let models = displayPostModels
+        guard indexPath.row < models.count else { return }
+        let postId = models[indexPath.row].postId
+        let isCollected = UserData.toggleCollect(
+            postId: postId,
+            isCollected: models[indexPath.row].isCollected
+        )
+        syncCollectState(postId: postId, isCollected: isCollected)
+        tableView.reloadRows(at: [indexPath], with: .none)
+    }
+
+    private func syncCollectState(postId: String, isCollected: Bool) {
+        func apply(to models: inout [PostModel]) {
+            guard let index = models.firstIndex(where: { $0.postId == postId }) else { return }
+            models[index].isCollected = isCollected
+        }
+        apply(to: &forYouPostModels)
+        apply(to: &followingPostModels)
+        forYouItems = forYouPostModels.map { $0.toProfilePostItem() }
+        followingItems = followingPostModels.map { $0.toProfilePostItem() }
     }
 
     private func toggleVideoFollow(at indexPath: IndexPath) {
@@ -199,9 +257,4 @@ extension CS_DiscoverVC: UITableViewDataSource, UITableViewDelegate {
         }
     }
 
-    private func toggleVideoCollect(at indexPath: IndexPath) {
-        updateItem(at: indexPath) { item in
-            item.videoPost?.isCollected.toggle()
-        }
-    }
 }

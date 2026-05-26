@@ -18,6 +18,7 @@ extension PostModel {
 
     func toHomePost() -> CS_HomePost {
         CS_HomePost(
+            postId: postId,
             userName: userName,
             time: time,
             content: content,
@@ -34,9 +35,12 @@ extension PostModel {
 
     func toDiscoverFeedItem() -> CS_DiscoverFeedItem {
         CS_DiscoverFeedItem(
+            postId: postId,
             coverImageName: "discover",
             content: content,
             userName: userName,
+            likeCount: likeCount,
+            isLiked: isLiked,
             isFollowing: isFollowing,
             isCollected: isCollected,
             coverImagePath: media.videoCoverURL,

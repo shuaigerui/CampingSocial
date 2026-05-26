@@ -8,6 +8,7 @@
 import UIKit
 
 struct CS_HomePost {
+    let postId: String
     let userName: String
     let time: String
     let content: String

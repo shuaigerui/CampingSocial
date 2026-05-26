@@ -142,15 +142,19 @@ final class CS_CurrentUser {
 
     // MARK: - Profile
 
+    /// 更新当前用户昵称、签名、头像，并持久化到本地
     @discardableResult
-    func updateProfile(userName: String, signature: String, avatarURL: String?) -> Bool {
+    func updateProfile(userName: String, signature: String, avatarURL: String) -> Bool {
         guard var current = user, let kind = loginKind else { return false }
         current.userName = userName
         current.signature = signature
-        if let avatarURL {
-            current.avatarURL = avatarURL
-        }
+        current.avatarURL = avatarURL
         syncRegisteredUserIfNeeded(current, kind: kind)
+        UserData.syncAuthorProfile(
+            userId: current.userId,
+            userName: userName,
+            avatarURL: avatarURL
+        )
         return persist(user: current, kind: kind)
     }
 
