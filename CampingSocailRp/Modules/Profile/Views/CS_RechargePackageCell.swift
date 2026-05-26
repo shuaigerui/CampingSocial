@@ -7,9 +7,33 @@
 
 import UIKit
 
-struct CS_RechargePackage {
+struct CS_RechargePackage: Equatable {
+    /// App Store 商品 ID（批次号）
+    let productId: String
     let gems: Int
-    let price: String
+    /// 配置表展示价（未拉取到 StoreKit 价格时使用）
+    let displayPrice: String
+
+    var price: String { displayPrice }
+
+    /// 充值档位（与 App Store Connect 商品 ID 一致）
+    static let catalog: [CS_RechargePackage] = [
+        CS_RechargePackage(productId: "ujpruorrlkbqffzn", gems: 63_700, displayPrice: "$99.99"),
+        CS_RechargePackage(productId: "zzcjkacefpbiibug", gems: 29_400, displayPrice: "$49.99"),
+        CS_RechargePackage(productId: "hrzfuikywexdnuxk", gems: 10_800, displayPrice: "$19.99"),
+        CS_RechargePackage(productId: "woqhjfsmlmeyjqov", gems: 5_150, displayPrice: "$9.99"),
+        CS_RechargePackage(productId: "lyekhqwnlnxjwaet", gems: 2_450, displayPrice: "$4.99"),
+        CS_RechargePackage(productId: "jcnxubmhvhgnhtyw", gems: 800, displayPrice: "$1.99"),
+        CS_RechargePackage(productId: "qjubzksscotwhmqr", gems: 400, displayPrice: "$0.99")
+    ]
+
+    static func package(productId: String) -> CS_RechargePackage? {
+        catalog.first { $0.productId == productId }
+    }
+
+    static var productIds: [String] {
+        catalog.map(\.productId)
+    }
 }
 
 final class CS_RechargePackageCell: UICollectionViewCell {
@@ -96,8 +120,14 @@ final class CS_RechargePackageCell: UICollectionViewCell {
         }
     }
 
-    func configure(with package: CS_RechargePackage) {
-        gemsLabel.text = "\(package.gems)"
-        priceLabel.text = package.price
+    func configure(with package: CS_RechargePackage, priceText: String? = nil) {
+        gemsLabel.text = Self.formatGems(package.gems)
+        priceLabel.text = priceText ?? package.displayPrice
+    }
+
+    private static func formatGems(_ count: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        return formatter.string(from: NSNumber(value: count)) ?? "\(count)"
     }
 }

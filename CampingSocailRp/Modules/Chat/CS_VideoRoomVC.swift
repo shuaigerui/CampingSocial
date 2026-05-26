@@ -117,6 +117,10 @@ class CS_VideoRoomVC: CS_BaseVC {
     // MARK: - Entry（进入页面前检查权限）
 
     static func open(from presenter: UIViewController, peer: UserModel) {
+        guard CS_ChatAccess.canChat(with: peer.userId) else {
+            presenter.showFriendsOnlyPop()
+            return
+        }
         CS_MediaPermission.requestCamera(from: presenter) { cameraGranted in
             guard cameraGranted else { return }
             CS_MediaPermission.requestMicrophone(from: presenter) { micGranted in

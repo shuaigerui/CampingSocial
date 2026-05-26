@@ -18,6 +18,7 @@ class CS_DiscoverHeaderView: UIView {
     }
 
     var onSegmentChanged: ((Int) -> Void)?
+    var onLiveItemTapped: ((CS_DiscoverLiveItem) -> Void)?
 
     private var liveItems: [CS_DiscoverLiveItem] = []
 
@@ -106,14 +107,26 @@ class CS_DiscoverHeaderView: UIView {
     }
 
     private func loadMockData() {
-        liveItems = (0..<5).map { _ in
+        liveItems = Self.makeLiveItems()
+        collectionView.reloadData()
+    }
+
+    /// Live 区 6 条数据（`Video/Live` 目录现有 4 个视频，后 2 条复用并配不同标题）
+    private static func makeLiveItems() -> [CS_DiscoverLiveItem] {
+        let sources: [(video: String, title: String)] = [
+            ("live_01", "Mountain forest adventure"),
+            ("live_02", "Riverside sunset camping"),
+            ("live_03", "Friends in the orange tent"),
+            ("live_04", "Wilderness creek morning")
+        ]
+        return sources.map { source in
             CS_DiscoverLiveItem(
-                coverImageName: "discover",
-                viewerCount: 697,
-                title: "Mountain forest adventure"
+                themeKey: source.video,
+                videoPath: CS_ResourcePath.liveVideo(source.video),
+                viewerCount: Int.random(in: 1...15),
+                title: source.title
             )
         }
-        collectionView.reloadData()
     }
 
     private func makeSegmentButton(title: String, tag: Int) -> UIButton {
@@ -160,5 +173,10 @@ extension CS_DiscoverHeaderView: UICollectionViewDataSource, UICollectionViewDel
         }
         cell.configure(with: liveItems[indexPath.item])
         return cell
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        guard liveItems.indices.contains(indexPath.item) else { return }
+        onLiveItemTapped?(liveItems[indexPath.item])
     }
 }

@@ -65,6 +65,7 @@ class CS_PersonVC: CS_BaseVC {
     }
 
     private func loadData() {
+        isFollowing = UserData.isFollowing(userId: user.userId)
         let userPosts = UserData.posts(forUserId: user.userId)
         postModels = userPosts
         posts = userPosts.map { $0.toProfilePostItem() }
@@ -100,12 +101,12 @@ class CS_PersonVC: CS_BaseVC {
         }
         headerView.onChatTapped = { [weak self] in
             guard let self, !self.isCurrentUser else { return }
-            self.navigationController?.pushViewController(CS_ChatRoomVC(peer: self.user), animated: true)
+            self.openChatRoom(peer: self.user)
         }
     }
 
     private func toggleFollow() {
-        isFollowing.toggle()
+        isFollowing = UserData.toggleFollow(userId: user.userId)
         headerView.configure(
             with: user,
             postCount: posts.count,

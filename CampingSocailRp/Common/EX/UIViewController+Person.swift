@@ -9,10 +9,11 @@ import UIKit
 
 extension UIViewController {
 
-    func pushPerson(userId: String, isFollowing: Bool = false) {
+    func pushPerson(userId: String, isFollowing: Bool? = nil) {
         guard let user = UserData.user(userId: userId) else { return }
+        let following = isFollowing ?? user.isFollow
         navigationController?.pushViewController(
-            CS_PersonVC(user: user, isFollowing: isFollowing),
+            CS_PersonVC(user: user, isFollowing: following),
             animated: true
         )
     }

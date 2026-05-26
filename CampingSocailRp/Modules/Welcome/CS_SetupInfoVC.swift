@@ -5,17 +5,19 @@
 //  Created by  mac on 2026/5/22.
 //
 
+import PhotosUI
 import Toast_Swift
 import UIKit
 
 enum CS_SetupInfoMode {
     case register(email: String, password: String)
-    case apple
+    case apple(appleUserId: String, suggestedName: String?)
 }
 
 class CS_SetupInfoVC: CS_BaseVC {
 
     private let mode: CS_SetupInfoMode
+    private var pendingAvatarImage: UIImage?
 
     init(mode: CS_SetupInfoMode) {
         self.mode = mode
@@ -23,7 +25,7 @@ class CS_SetupInfoVC: CS_BaseVC {
     }
 
     required init?(coder: NSCoder) {
-        self.mode = .apple
+        self.mode = .apple(appleUserId: "", suggestedName: nil)
         super.init(coder: coder)
     }
 
@@ -108,7 +110,16 @@ class CS_SetupInfoVC: CS_BaseVC {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
+        applySuggestedNameIfNeeded()
         updateBioPlaceholder()
+    }
+
+    private func applySuggestedNameIfNeeded() {
+        guard case .apple(_, let suggestedName) = mode,
+              let suggestedName,
+              !suggestedName.isEmpty,
+              nameField.text?.isEmpty != false else { return }
+        nameField.text = suggestedName
     }
 
     private func setupUI() {
@@ -214,7 +225,37 @@ class CS_SetupInfoVC: CS_BaseVC {
         navigationController?.popViewController(animated: true)
     }
 
-    @objc private func onAvatarTapped() {}
+    @objc private func onAvatarTapped() {
+        CS_MediaPermission.requestPhotoLibrary(from: self) { [weak self] granted in
+            guard let self, granted else { return }
+            self.presentAvatarPicker()
+        }
+    }
+
+    private func presentAvatarPicker() {
+        var config = PHPickerConfiguration(photoLibrary: .shared())
+        config.filter = .images
+        config.selectionLimit = 1
+        let picker = PHPickerViewController(configuration: config)
+        picker.delegate = self
+        present(picker, animated: true)
+    }
+
+    private func applyPickedAvatar(_ image: UIImage) {
+        pendingAvatarImage = image
+        avatarImageView.image = image
+        avatarImageView.backgroundColor = .clear
+    }
+
+    private func persistAvatarIfNeeded(userName: String, signature: String) {
+        guard let image = pendingAvatarImage,
+              let path = CS_CurrentUser.shared.saveAvatarImage(image) else { return }
+        _ = CS_CurrentUser.shared.updateProfile(
+            userName: userName,
+            signature: signature,
+            avatarURL: path
+        )
+    }
 
     @objc private func onCreate() {
         let userName = nameField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -238,17 +279,25 @@ class CS_SetupInfoVC: CS_BaseVC {
                 view.makeToast("This email is already registered")
                 return
             }
-        case .apple:
-            didLogin = CS_CurrentUser.shared.loginWithApple(
+        case .apple(let appleUserId, _):
+            didLogin = CS_CurrentUser.shared.registerAppleAccount(
+                appleUserId: appleUserId,
                 userName: userName,
                 signature: signature.isEmpty ? "Personal signature~" : signature
             )
+            if !didLogin {
+                view.makeToast("This Apple account is already registered")
+                return
+            }
         }
 
         guard didLogin else {
             view.makeToast("Unable to complete sign up")
             return
         }
+
+        let finalSignature = signature.isEmpty ? "Personal signature~" : signature
+        persistAvatarIfNeeded(userName: userName, signature: finalSignature)
         CS_CurrentUser.shared.switchRoot(on: view.window)
     }
 
@@ -258,6 +307,24 @@ class CS_SetupInfoVC: CS_BaseVC {
         nav.pushViewController(CS_SetupFormVC(mode: .signIn), animated: true)
     }
 
+}
+
+// MARK: - PHPickerViewControllerDelegate
+
+extension CS_SetupInfoVC: PHPickerViewControllerDelegate {
+
+    func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+        picker.dismiss(animated: true)
+        guard let provider = results.first?.itemProvider,
+              provider.canLoadObject(ofClass: UIImage.self) else { return }
+
+        provider.loadObject(ofClass: UIImage.self) { [weak self] object, _ in
+            guard let self, let image = object as? UIImage else { return }
+            DispatchQueue.main.async {
+                self.applyPickedAvatar(image)
+            }
+        }
+    }
 }
 
 extension CS_SetupInfoVC: UITextViewDelegate {

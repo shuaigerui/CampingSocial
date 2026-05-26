@@ -11,6 +11,8 @@ final class CS_DiscoverLiveCell: UICollectionViewCell {
 
     static let reuseID = "CS_DiscoverLiveCell"
 
+    private var coverVideoPath: String?
+
     private let coverImageView: UIImageView = {
         let v = UIImageView()
         v.contentMode = .scaleAspectFill
@@ -115,9 +117,30 @@ final class CS_DiscoverLiveCell: UICollectionViewCell {
         }
     }
 
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        coverVideoPath = nil
+        coverImageView.image = nil
+        coverImageView.backgroundColor = UIColor(hex: "#4A5A42")
+    }
+
     func configure(with item: CS_DiscoverLiveItem) {
-        coverImageView.image = item.coverImageName.toImage
+        coverVideoPath = item.videoPath
         viewerLabel.text = "\(item.viewerCount)"
         titleLabel.text = item.title
+
+        if let cached = CS_VideoThumbnail.cachedImage(forVideoPath: item.videoPath) {
+            coverImageView.image = cached
+            coverImageView.backgroundColor = .clear
+            return
+        }
+
+        coverImageView.image = nil
+        coverImageView.backgroundColor = UIColor(hex: "#4A5A42")
+        CS_VideoThumbnail.loadFirstFrame(forVideoPath: item.videoPath) { [weak self] image in
+            guard let self, self.coverVideoPath == item.videoPath else { return }
+            self.coverImageView.image = image
+            self.coverImageView.backgroundColor = image == nil ? UIColor(hex: "#4A5A42") : .clear
+        }
     }
 }

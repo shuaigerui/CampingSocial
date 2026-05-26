@@ -28,6 +28,7 @@ class CS_ProfileVC: CS_BaseVC {
     }()
 
     private lazy var headerView = CS_ProfileHeaderView()
+    private lazy var emptyView = CS_EmptyView()
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
@@ -53,6 +54,7 @@ class CS_ProfileVC: CS_BaseVC {
         posts = userPosts.map { $0.toProfilePostItem() }
 
         headerView.configure(with: user, postCount: userPosts.count)
+        emptyView.isHidden = posts.count > 0
         tableView.reloadData()
     }
 
@@ -61,6 +63,11 @@ class CS_ProfileVC: CS_BaseVC {
         tableView.snp.makeConstraints { make in
             make.leading.trailing.equalToSuperview()
             make.top.bottom.equalTo(view.safeAreaLayoutGuide)
+        }
+        view.addSubview(emptyView)
+        emptyView.snp.makeConstraints { make in
+            make.centerX.equalToSuperview()
+            make.centerY.equalToSuperview().offset(150)
         }
 
         let width = UIScreen.main.bounds.width

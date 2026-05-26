@@ -23,7 +23,14 @@ enum CS_UserListStorage {
 
     static func userIds(for kind: CS_UserListKind) -> [String] {
         bootstrapIfNeeded()
-        return loadIds(key(for: kind))
+        switch kind {
+        case .friends:
+            return mutualFriendIds()
+        case .friendRequest, .followers:
+            return pendingFollowerIds()
+        case .following, .blockList:
+            return loadIds(key(for: kind))
+        }
     }
 
     static func users(for kind: CS_UserListKind) -> [UserModel] {
@@ -31,40 +38,78 @@ enum CS_UserListStorage {
     }
 
     static func count(for kind: CS_UserListKind) -> Int {
-        userIds(for: kind).count
+        bootstrapIfNeeded()
+        switch kind {
+        case .friendRequest:
+            return pendingFollowerIds().count
+        case .followers:
+            return loadIds(Key.followers).count
+        default:
+            return userIds(for: kind).count
+        }
+    }
+
+    /// 关注我的用户 ID（全部粉丝）
+    static func allFollowerIds() -> [String] {
+        bootstrapIfNeeded()
+        return loadIds(Key.followers)
+    }
+
+    /// 关注我、我尚未回关的用户
+    static func pendingFollowerIds() -> [String] {
+        let followers = allFollowerIds()
+        let followingSet = Set(loadIds(Key.following))
+        return followers.filter { !followingSet.contains($0) }
+    }
+
+    /// 互相关注：对方关注我且我已关注对方
+    static func isMutualFriend(userId: String) -> Bool {
+        allFollowerIds().contains(userId) && isFollowing(userId: userId)
+    }
+
+    /// 互相关注：我关注的 ∩ 关注我的
+    private static func mutualFriendIds() -> [String] {
+        let following = loadIds(Key.following)
+        let followerSet = Set(loadIds(Key.followers))
+        return following.filter { followerSet.contains($0) }
     }
 
     // MARK: - Write
 
+    /// 接受关注：回关对方，成为互相关注好友
     static func acceptFriendRequest(userId: String) {
-        var requests = userIds(for: .friendRequest)
-        requests.removeAll { $0 == userId }
-        saveIds(requests, key: Key.friendRequests)
-
-        var friends = userIds(for: .friends)
-        if !friends.contains(userId) {
-            friends.append(userId)
-            saveIds(friends, key: Key.friends)
-        }
+        follow(userId: userId)
     }
 
     static func follow(userId: String) {
-        var following = userIds(for: .following)
+        var following = loadIds(Key.following)
         guard !following.contains(userId) else { return }
         following.append(userId)
         saveIds(following, key: Key.following)
-
-        var followers = userIds(for: .followers)
-        if !followers.contains(userId) {
-            followers.append(userId)
-            saveIds(followers, key: Key.followers)
-        }
     }
 
     static func unfollow(userId: String) {
         var following = userIds(for: .following)
         following.removeAll { $0 == userId }
         saveIds(following, key: Key.following)
+    }
+
+    /// 当前登录用户是否已关注该用户
+    static func isFollowing(userId: String) -> Bool {
+        guard let currentId = CS_CurrentUser.shared.user?.userId else { return false }
+        guard currentId != userId else { return false }
+        return userIds(for: .following).contains(userId)
+    }
+
+    /// 切换关注状态，返回切换后是否已关注（已持久化到 UserDefaults）
+    @discardableResult
+    static func toggleFollow(userId: String) -> Bool {
+        if isFollowing(userId: userId) {
+            unfollow(userId: userId)
+            return false
+        }
+        follow(userId: userId)
+        return true
     }
 
     static func unblock(userId: String) {
@@ -91,6 +136,15 @@ enum CS_UserListStorage {
         CS_ChatStorage.deleteConversation(peerUserId: userId)
     }
 
+    /// 清空当前账号的关注 / 粉丝 / 黑名单等社交列表（删号用）
+    static func clearAccountSocialData() {
+        saveIds([], key: Key.following)
+        saveIds([], key: Key.followers)
+        saveIds([], key: Key.friendRequests)
+        saveIds([], key: Key.friends)
+        saveIds([], key: Key.blockList)
+    }
+
     // MARK: - Bootstrap
 
     private static func bootstrapIfNeeded() {
@@ -100,10 +154,10 @@ enum CS_UserListStorage {
         let all = UserData.localUsers.map(\.userId)
         guard all.count >= 5 else { return }
 
-        saveIds(Array(all.prefix(3)), key: Key.friendRequests)
         saveIds([all[0], all[1]], key: Key.following)
-        saveIds([all[2]], key: Key.friends)
-        saveIds([all[3], all[4]], key: Key.followers)
+        saveIds([all[1], all[3], all[4]], key: Key.followers)
+        saveIds([], key: Key.friendRequests)
+        saveIds([], key: Key.friends)
         saveIds([], key: Key.blockList)
     }
 
@@ -128,19 +182,11 @@ enum CS_UserListStorage {
     }
 
     private static func removeFromAllListsExceptBlock(userId: String) {
-        var requests = userIds(for: .friendRequest)
-        requests.removeAll { $0 == userId }
-        saveIds(requests, key: Key.friendRequests)
-
-        var following = userIds(for: .following)
+        var following = loadIds(Key.following)
         following.removeAll { $0 == userId }
         saveIds(following, key: Key.following)
 
-        var friends = userIds(for: .friends)
-        friends.removeAll { $0 == userId }
-        saveIds(friends, key: Key.friends)
-
-        var followers = userIds(for: .followers)
+        var followers = loadIds(Key.followers)
         followers.removeAll { $0 == userId }
         saveIds(followers, key: Key.followers)
     }

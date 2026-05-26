@@ -20,12 +20,20 @@ final class CS_CurrentUser {
 
     static let testEmail = "test@gmail.com"
     static let testPassword = "123456"
+    /// 发布一条动态消耗的宝石数
+    static let postPublishGemCost = 30
 
     private enum StorageKey {
         static let isLoggedIn = "cs.currentUser.isLoggedIn"
         static let loginKind = "cs.currentUser.loginKind"
         static let userJSON = "cs.currentUser.userJSON"
         static let registeredUsers = "cs.currentUser.registeredUsers"
+        static let appleUsers = "cs.currentUser.appleUsers"
+    }
+
+    private struct AppleAccountRecord: Codable {
+        let appleUserId: String
+        var user: UserModel
     }
 
     private(set) var user: UserModel?
@@ -53,6 +61,7 @@ final class CS_CurrentUser {
         if let raw = UserDefaults.standard.string(forKey: StorageKey.loginKind) {
             loginKind = CS_LoginKind(rawValue: raw)
         }
+        normalizeStoredAvatarIfNeeded()
     }
 
     func rootViewController() -> UIViewController {
@@ -97,15 +106,37 @@ final class CS_CurrentUser {
         return false
     }
 
+    /// 是否已有该 Apple 账号的本地资料（非首次登录）
+    func hasAppleAccount(appleUserId: String) -> Bool {
+        appleUserIdRecord(appleUserId) != nil
+    }
+
+    /// 回访 Apple 用户：直接登录
     @discardableResult
-    func loginWithApple(userName: String, signature: String, avatarURL: String? = "info_avatar") -> Bool {
+    func loginExistingAppleAccount(appleUserId: String) -> Bool {
+        guard let record = appleUserIdRecord(appleUserId) else { return false }
+        return persist(user: record.user, kind: .apple)
+    }
+
+    /// 首次 Apple 登录：完善资料后注册并登录
+    @discardableResult
+    func registerAppleAccount(
+        appleUserId: String,
+        userName: String,
+        signature: String,
+        avatarURL: String? = "info_avatar"
+    ) -> Bool {
+        guard appleUserIdRecord(appleUserId) == nil else { return false }
         let model = Self.makeUser(
             userName: userName,
             signature: signature,
-            email: "apple_\(UUID().uuidString.prefix(8))@local",
+            email: Self.appleEmail(appleUserId: appleUserId),
             password: "",
             avatarURL: avatarURL
         )
+        var records = loadAppleUsers()
+        records.append(AppleAccountRecord(appleUserId: appleUserId, user: model))
+        saveAppleUsers(records)
         return persist(user: model, kind: .apple)
     }
 
@@ -145,6 +176,41 @@ final class CS_CurrentUser {
         clearMemory()
     }
 
+    /// 删除当前账号：清空本地数据、注销并返回登录前状态
+    @discardableResult
+    func deleteAccount() -> Bool {
+        guard let current = user, let kind = loginKind else { return false }
+        let userId = current.userId
+
+        UserData.purgeLocalActivity(forUserId: userId)
+        CS_UserListStorage.clearAccountSocialData()
+        CS_ChatStorage.deleteAllConversations()
+
+        let avatarPath = Self.avatarFileURL(userId: userId)
+        if FileManager.default.fileExists(atPath: avatarPath.path) {
+            try? FileManager.default.removeItem(at: avatarPath)
+        }
+        let legacyAvatarPath = Self.legacyAvatarFileURL(userId: userId)
+        if FileManager.default.fileExists(atPath: legacyAvatarPath.path) {
+            try? FileManager.default.removeItem(at: legacyAvatarPath)
+        }
+
+        if kind == .email {
+            var users = registeredUsers()
+            users.removeAll { $0.userId == userId }
+            saveRegisteredUsers(users)
+        }
+
+        if kind == .apple, let appleUserId = Self.parseAppleUserId(from: current.email) {
+            var records = loadAppleUsers()
+            records.removeAll { $0.appleUserId == appleUserId }
+            saveAppleUsers(records)
+        }
+
+        logout()
+        return true
+    }
+
     // MARK: - Profile
 
     /// 更新当前用户昵称、签名、头像，并持久化到本地
@@ -171,10 +237,16 @@ final class CS_CurrentUser {
         return persist(user: current, kind: kind)
     }
 
+    func canAffordPostPublish() -> Bool {
+        (user?.gemsCount ?? 0) >= Self.postPublishGemCost
+    }
+
     @discardableResult
     func publishPost(_ post: PostModel) -> Bool {
+        guard var current = user, let kind = loginKind else { return false }
+        guard current.gemsCount >= Self.postPublishGemCost else { return false }
         UserData.addUserPost(post)
-        guard var current = user, let kind = loginKind else { return true }
+        current.gemsCount -= Self.postPublishGemCost
         current.postCount = UserData.posts(forUserId: current.userId).count
         syncRegisteredUserIfNeeded(current, kind: kind)
         return persist(user: current, kind: kind)
@@ -196,7 +268,11 @@ final class CS_CurrentUser {
         guard let data = image.jpegData(compressionQuality: 0.85) else { return nil }
         do {
             try data.write(to: url, options: .atomic)
-            return url.path
+            let legacy = Self.legacyAvatarFileURL(userId: userId)
+            if legacy.path != url.path, FileManager.default.fileExists(atPath: legacy.path) {
+                try? FileManager.default.removeItem(at: legacy)
+            }
+            return CS_AvatarStorage.relativePath(userId: userId)
         } catch {
             return nil
         }
@@ -205,16 +281,47 @@ final class CS_CurrentUser {
     // MARK: - Private
 
     private func syncRegisteredUserIfNeeded(_ user: UserModel, kind: CS_LoginKind) {
-        guard kind == .email else { return }
-        var users = registeredUsers()
-        guard let index = users.firstIndex(where: { $0.userId == user.userId }) else { return }
-        users[index] = user
-        saveRegisteredUsers(users)
+        switch kind {
+        case .email:
+            var users = registeredUsers()
+            guard let index = users.firstIndex(where: { $0.userId == user.userId }) else { return }
+            users[index] = user
+            saveRegisteredUsers(users)
+        case .apple:
+            guard let appleUserId = Self.parseAppleUserId(from: user.email) else { return }
+            var records = loadAppleUsers()
+            guard let index = records.firstIndex(where: { $0.appleUserId == appleUserId }) else { return }
+            records[index].user = user
+            saveAppleUsers(records)
+        case .test:
+            break
+        }
     }
 
     private static func avatarFileURL(userId: String) -> URL {
-        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        return dir.appendingPathComponent("avatar_\(userId).jpg")
+        CS_AvatarStorage.directoryURL.appendingPathComponent(CS_AvatarStorage.fileName(userId: userId))
+    }
+
+    private static func legacyAvatarFileURL(userId: String) -> URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent(CS_AvatarStorage.fileName(userId: userId))
+    }
+
+    /// 将历史绝对路径头像迁移为 `Avatars/avatar_*.jpg` 相对路径
+    private func normalizeStoredAvatarIfNeeded() {
+        guard var current = user, let kind = loginKind,
+              let stored = current.avatarURL,
+              !stored.isEmpty,
+              stored != "info_avatar",
+              !stored.hasPrefix("\(CS_AvatarStorage.folderName)/") else { return }
+
+        guard let absolute = CS_AvatarStorage.resolvePath(stored),
+              let image = UIImage(contentsOfFile: absolute),
+              let relative = saveAvatarImage(image) else { return }
+
+        current.avatarURL = relative
+        syncRegisteredUserIfNeeded(current, kind: kind)
+        persist(user: current, kind: kind)
     }
 
     @discardableResult
@@ -225,6 +332,7 @@ final class CS_CurrentUser {
         UserDefaults.standard.set(data, forKey: StorageKey.userJSON)
         self.user = user
         loginKind = kind
+        normalizeStoredAvatarIfNeeded()
         return true
     }
 
@@ -246,6 +354,37 @@ final class CS_CurrentUser {
         UserDefaults.standard.set(data, forKey: StorageKey.registeredUsers)
     }
 
+    private func appleUserIdRecord(_ appleUserId: String) -> AppleAccountRecord? {
+        loadAppleUsers().first { $0.appleUserId == appleUserId }
+    }
+
+    private func loadAppleUsers() -> [AppleAccountRecord] {
+        guard let data = UserDefaults.standard.data(forKey: StorageKey.appleUsers),
+              let records = try? JSONDecoder().decode([AppleAccountRecord].self, from: data) else {
+            return []
+        }
+        return records
+    }
+
+    private func saveAppleUsers(_ records: [AppleAccountRecord]) {
+        guard let data = try? JSONEncoder().encode(records) else { return }
+        UserDefaults.standard.set(data, forKey: StorageKey.appleUsers)
+    }
+
+    private static func appleEmail(appleUserId: String) -> String {
+        "apple_\(appleUserId)@local"
+    }
+
+    private static func parseAppleUserId(from email: String) -> String? {
+        let prefix = "apple_"
+        let suffix = "@local"
+        guard email.hasPrefix(prefix), email.hasSuffix(suffix) else { return nil }
+        let start = email.index(email.startIndex, offsetBy: prefix.count)
+        let end = email.index(email.endIndex, offsetBy: -suffix.count)
+        guard start < end else { return nil }
+        return String(email[start..<end])
+    }
+
     private static func makeUser(
         userName: String,
         signature: String,
@@ -265,7 +404,8 @@ final class CS_CurrentUser {
             postCount: 0,
             email: email,
             password: password,
-            isBlock: false
+            isBlock: false,
+            isFollow: false
         )
     }
 

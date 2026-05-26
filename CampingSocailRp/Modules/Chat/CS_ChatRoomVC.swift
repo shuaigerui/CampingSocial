@@ -210,7 +210,7 @@ class CS_ChatRoomVC: CS_BaseVC {
     }
 
     @objc private func onMore() {
-        navigationController?.pushViewController(CS_ReportVC(), animated: true)
+        confirmBlockUser()
     }
 
     @objc private func onVideo() {
@@ -234,6 +234,27 @@ class CS_ChatRoomVC: CS_BaseVC {
             message: message
         )
         reloadMessages()
+    }
+    
+    private func confirmBlockUser() {
+        guard CS_CurrentUser.shared.user?.userId != peer.userId else { return }
+
+        let alert = UIAlertController(
+            title: "Block User",
+            message: "You will no longer see posts from \(peer.userName). Your chat history will be deleted and they will be added to your blacklist.",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Block", style: .destructive) { [weak self] _ in
+            self?.performBlockUser()
+        })
+        present(alert, animated: true)
+    }
+
+    private func performBlockUser() {
+        CS_UserListStorage.blockUser(userId: peer.userId)
+        view.makeToast("Blocked \(peer.userName)")
+        navigationController?.popViewController(animated: true)
     }
 }
 

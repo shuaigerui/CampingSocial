@@ -34,6 +34,8 @@ struct UserModel: Codable, Equatable {
     var password: String
     /// 是否已拉黑 / 在黑名单中
     var isBlock: Bool
+    /// 当前登录用户是否已关注（由 `CS_UserListStorage` 同步，本地展示用）
+    var isFollow: Bool
 
     // MARK: - Display
 
@@ -63,6 +65,7 @@ extension UserModel {
         postCount: 67,
         email: "",
         password: "",
-        isBlock: false
+        isBlock: false,
+        isFollow: false
     )
 }

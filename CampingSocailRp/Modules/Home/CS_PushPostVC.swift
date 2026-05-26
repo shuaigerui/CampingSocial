@@ -36,6 +36,8 @@ class CS_PushPostVC: CS_BaseVC {
     private static let itemSpacing: CGFloat = 10
 
     private let mediaMode: CS_PushPostMediaMode
+    /// 为 true 时发布内容自动追加「#Starry Sky Camping」（星空露营专题）
+    private let appendStarrySkyTag: Bool
     private var contentState: ContentState = .empty
 
     private lazy var backButton: UIButton = {
@@ -90,6 +92,16 @@ class CS_PushPostVC: CS_BaseVC {
         v.textColor = UIColor(hex: "#4A3F35").withAlphaComponent(0.35)
         return v
     }()
+    
+    private let costLabel: UILabel = {
+        let label = UILabel()
+        label.text = "Unlocking dynamic posting costs 30 gold coins."
+        label.font = .systemFont(ofSize: 16, weight: .medium)
+        label.textColor = UIColor(hex: "#4A3F35")
+        label.textAlignment = .center
+        label.numberOfLines = 0
+        return label
+    }()
 
     private lazy var postButton: UIButton = {
         let btn = UIButton(type: .custom)
@@ -101,8 +113,9 @@ class CS_PushPostVC: CS_BaseVC {
         return btn
     }()
 
-    init(mediaMode: CS_PushPostMediaMode) {
+    init(mediaMode: CS_PushPostMediaMode, appendStarrySkyTag: Bool = false) {
         self.mediaMode = mediaMode
+        self.appendStarrySkyTag = appendStarrySkyTag
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -135,6 +148,7 @@ class CS_PushPostVC: CS_BaseVC {
         view.addSubview(collectionView)
         view.addSubview(descriptionTextView)
         descriptionTextView.addSubview(descriptionPlaceholder)
+        view.addSubview(costLabel)
         view.addSubview(postButton)
 
         backButton.snp.makeConstraints { make in
@@ -163,6 +177,11 @@ class CS_PushPostVC: CS_BaseVC {
         descriptionPlaceholder.snp.makeConstraints { make in
             make.top.equalToSuperview().offset(14)
             make.left.equalToSuperview().offset(16)
+        }
+        
+        costLabel.snp.makeConstraints { make in
+            make.top.equalTo(descriptionTextView.snp.bottom).offset(16)
+            make.left.right.equalToSuperview().inset(20)
         }
 
         postButton.snp.makeConstraints { make in
@@ -292,6 +311,11 @@ class CS_PushPostVC: CS_BaseVC {
             return
         }
 
+        guard CS_CurrentUser.shared.canAffordPostPublish() else {
+            view.makeToast("Not enough gems. Please recharge.")
+            return
+        }
+
         guard let post = buildPostModel(content: description) else {
             view.makeToast("Failed to publish. Please try again.")
             return
@@ -357,7 +381,7 @@ class CS_PushPostVC: CS_BaseVC {
             userName: user.userName,
             avatarURL: user.avatarURL,
             time: time,
-            content: content,
+            content: resolvedPostContent(from: content),
             media: media,
             likeCount: 0,
             commentCount: 0,
@@ -367,6 +391,13 @@ class CS_PushPostVC: CS_BaseVC {
             isCollected: false,
             isReport: false
         )
+    }
+
+    private func resolvedPostContent(from description: String) -> String {
+        guard appendStarrySkyTag else { return description }
+        let tag = UserData.starrySkyCampingTag
+        guard !description.contains(tag) else { return description }
+        return "\(description) \(tag)"
     }
 
     private static func formatPostTime(_ date: Date) -> String {

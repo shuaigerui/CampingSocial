@@ -8,7 +8,10 @@
 import UIKit
 
 struct CS_DiscoverLiveItem {
-    let coverImageName: String
+    /// 话术主题 key，对应 `CS_LiveRoomScripts`
+    let themeKey: String
+    /// 本地 Live 视频路径（用于提取首帧封面）
+    let videoPath: String
     let viewerCount: Int
     let title: String
 }

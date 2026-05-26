@@ -109,22 +109,22 @@ class CS_UserListVC: CS_BaseVC {
 
     private func handleAction(for user: UserModel, at indexPath: IndexPath) {
         switch kind {
-        case .friendRequest:
-            CS_UserListStorage.acceptFriendRequest(userId: user.userId)
-            view.makeToast("Accepted \(user.userName)")
-            removeUser(at: indexPath)
+        case .friendRequest, .followers:
+            if CS_UserListStorage.isMutualFriend(userId: user.userId) {
+                openChatRoom(peer: user)
+            } else {
+                CS_UserListStorage.acceptFriendRequest(userId: user.userId)
+                view.makeToast("Following \(user.userName)")
+                if let cell = tableView.cellForRow(at: indexPath) as? CS_UserListCell {
+                    cell.configure(user: user, actionStyle: .image("user_chat"))
+                }
+            }
         case .following:
             CS_UserListStorage.unfollow(userId: user.userId)
             view.makeToast("Unfollowed \(user.userName)")
             removeUser(at: indexPath)
         case .friends:
-            navigationController?.pushViewController(CS_ChatRoomVC(peer: user), animated: true)
-        case .followers:
-            CS_UserListStorage.follow(userId: user.userId)
-            view.makeToast("Following \(user.userName)")
-            if let cell = tableView.cellForRow(at: indexPath) as? CS_UserListCell {
-                cell.configure(user: user, actionStyle: .image("home_following"))
-            }
+            openChatRoom(peer: user)
         case .blockList:
             CS_UserListStorage.unblock(userId: user.userId)
             view.makeToast("Removed \(user.userName)")
@@ -161,8 +161,9 @@ extension CS_UserListVC: UITableViewDataSource, UITableViewDelegate {
         }
         let user = users[indexPath.row]
         var style = kind.actionStyle
-        if kind == .followers, CS_UserListStorage.userIds(for: .following).contains(user.userId) {
-            style = .image("home_following")
+        if kind == .friendRequest || kind == .followers,
+           CS_UserListStorage.isMutualFriend(userId: user.userId) {
+            style = .image("user_chat")
         }
         cell.configure(user: user, actionStyle: style)
         cell.onActionTapped = { [weak self] in
@@ -175,7 +176,7 @@ extension CS_UserListVC: UITableViewDataSource, UITableViewDelegate {
         tableView.deselectRow(at: indexPath, animated: true)
         let user = users[indexPath.row]
         navigationController?.pushViewController(
-            CS_PersonVC(user: user, isFollowing: false),
+            CS_PersonVC(user: user, isFollowing: UserData.isFollowing(userId: user.userId)),
             animated: true
         )
     }

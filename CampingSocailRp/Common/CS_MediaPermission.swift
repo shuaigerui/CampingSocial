@@ -6,6 +6,7 @@
 //
 
 import AVFoundation
+import Photos
 import UIKit
 
 /// 相机 / 麦克风权限检查（进入视频通话前调用）
@@ -35,6 +36,43 @@ enum CS_MediaPermission {
             from: presenter,
             completion: completion
         )
+    }
+
+    /// 相册读取权限（选择头像、发布图片前调用）
+    static func requestPhotoLibrary(
+        from presenter: UIViewController,
+        completion: @escaping (Bool) -> Void
+    ) {
+        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        switch status {
+        case .authorized, .limited:
+            completion(true)
+        case .notDetermined:
+            PHPhotoLibrary.requestAuthorization(for: .readWrite) { newStatus in
+                DispatchQueue.main.async {
+                    switch newStatus {
+                    case .authorized, .limited:
+                        completion(true)
+                    default:
+                        showSettingsAlert(
+                            title: "Photo Library Access Required",
+                            message: "Please allow photo library access in Settings to choose an avatar.",
+                            from: presenter,
+                            completion: completion
+                        )
+                    }
+                }
+            }
+        case .denied, .restricted:
+            showSettingsAlert(
+                title: "Photo Library Access Required",
+                message: "Please allow photo library access in Settings to choose an avatar.",
+                from: presenter,
+                completion: completion
+            )
+        @unknown default:
+            completion(false)
+        }
     }
 
     static func openAppSettings() {

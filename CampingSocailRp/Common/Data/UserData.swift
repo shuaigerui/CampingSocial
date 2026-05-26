@@ -26,7 +26,8 @@ enum UserData {
         postCount: 4,
         email: "test@gmail.com",
         password: "123456",
-        isBlock: false
+        isBlock: false,
+        isFollow: false
     )
 
     /// 5 个本地用户（头像 avatar_01 ~ avatar_05）
@@ -43,7 +44,8 @@ enum UserData {
             postCount: 2,
             email: "mia@camping.com",
             password: "123456",
-            isBlock: false
+            isBlock: false,
+            isFollow: false
         ),
         UserModel(
             userId: "100002",
@@ -57,7 +59,8 @@ enum UserData {
             postCount: 2,
             email: "ethan@camping.com",
             password: "123456",
-            isBlock: false
+            isBlock: false,
+            isFollow: false
         ),
         UserModel(
             userId: "100003",
@@ -71,7 +74,8 @@ enum UserData {
             postCount: 2,
             email: "luna@camping.com",
             password: "123456",
-            isBlock: false
+            isBlock: false,
+            isFollow: false
         ),
         UserModel(
             userId: "100004",
@@ -85,7 +89,8 @@ enum UserData {
             postCount: 2,
             email: "noah@camping.com",
             password: "123456",
-            isBlock: false
+            isBlock: false,
+            isFollow: false
         ),
         UserModel(
             userId: "100005",
@@ -99,7 +104,8 @@ enum UserData {
             postCount: 2,
             email: "zoe@camping.com",
             password: "123456",
-            isBlock: false
+            isBlock: false,
+            isFollow: false
         )
     ]
 
@@ -126,9 +132,50 @@ enum UserData {
         let withCollects = applyPostCollectStates(to: withLikes)
         let withComments = applyPostExtraComments(to: withCollects)
         let withAuthors = applyAuthorProfileOverrides(to: withComments)
+        let withFollowing = applyFollowingStates(to: withAuthors)
         let blocked = Set(CS_UserListStorage.userIds(for: .blockList))
-        return applyReportStates(to: withAuthors)
+        return applyReportStates(to: withFollowing)
             .filter { !$0.isReport && !blocked.contains($0.userId) }
+    }
+
+    // MARK: - Follow（本地持久化，与 `CS_UserListStorage` 同步）
+
+    static func isFollowing(userId: String) -> Bool {
+        CS_UserListStorage.isFollowing(userId: userId)
+    }
+
+    @discardableResult
+    static func toggleFollow(userId: String) -> Bool {
+        CS_UserListStorage.toggleFollow(userId: userId)
+    }
+
+    /// 同步关注 / 拉黑等关系字段（相对当前登录用户）
+    static func userWithRelationFlags(_ user: UserModel) -> UserModel {
+        var updated = user
+        updated.isFollow = isFollowing(userId: user.userId)
+        updated.isBlock = CS_UserListStorage.isBlocked(userId: user.userId)
+        return updated
+    }
+
+    private static func applyFollowingStates(to posts: [PostModel]) -> [PostModel] {
+        let followingIds = Set(CS_UserListStorage.userIds(for: .following))
+        let currentUserId = CS_CurrentUser.shared.user?.userId
+        return posts.map { post in
+            var updated = post
+            if post.userId == currentUserId {
+                updated.isFollowing = false
+            } else {
+                updated.isFollowing = followingIds.contains(post.userId)
+            }
+            return updated
+        }
+    }
+
+    static let starrySkyCampingTag = "#Starry Sky Camping"
+
+    /// 正文带「星空露营」话题标签的动态
+    static var starrySkyPosts: [PostModel] {
+        allPosts.filter { $0.content.contains(starrySkyCampingTag) }
     }
 
     // MARK: - Author Profile（编辑资料后同步动态作者展示）
@@ -372,7 +419,7 @@ enum UserData {
             postId: "img_002",
             user: localUsers[1],
             time: "09:08am",
-            content: "Hiking through the clouds and mist is like stepping into another world.",
+            content: "Hiking through the clouds and mist is like stepping into another world. #Starry Sky Camping",
             images: ["post_04", "post_05"],
             likeCount: 88,
             commentCount: 21
@@ -390,7 +437,7 @@ enum UserData {
             postId: "img_004",
             user: testUser,
             time: "11:20am",
-            content: "Our little corner of the forest tonight.",
+            content: "Our little corner of the forest tonight. #Starry Sky Camping",
             images: ["post_09", "post_10", "post_11"],
             likeCount: 67,
             commentCount: 14
@@ -408,7 +455,7 @@ enum UserData {
             postId: "img_006",
             user: localUsers[4],
             time: "04:30pm",
-            content: "Golden hour never disappoints out here.",
+            content: "Golden hour never disappoints out here. #Starry Sky Camping",
             images: ["post_14", "post_15", "post_16"],
             likeCount: 310,
             commentCount: 72
@@ -421,7 +468,7 @@ enum UserData {
             postId: "vid_001",
             user: localUsers[0],
             time: "07:40am",
-            content: "First light timelapse from our ridge camp.",
+            content: "First light timelapse from our ridge camp. #Starry Sky Camping",
             cover: "post_01",
             video: "video_01",
             likeCount: 96,
@@ -471,7 +518,7 @@ enum UserData {
             postId: "vid_006",
             user: localUsers[4],
             time: "07:10pm",
-            content: "Campfire jam session last night.",
+            content: "Campfire jam session last night. #Starry Sky Camping",
             cover: "post_14",
             video: "video_06",
             likeCount: 265,
@@ -482,7 +529,8 @@ enum UserData {
     // MARK: - Query
 
     static func user(userId: String) -> UserModel? {
-        allUsers.first { $0.userId == userId }
+        guard let found = allUsers.first(where: { $0.userId == userId }) else { return nil }
+        return userWithRelationFlags(found)
     }
 
     /// 根据帖子作者信息获取用户（本地无则按帖子字段构造）
@@ -490,19 +538,22 @@ enum UserData {
         if let user = user(userId: post.userId) {
             return user
         }
-        return UserModel(
-            userId: post.userId,
-            userName: post.userName,
-            avatarURL: post.avatarURL,
-            signature: "Personal signature~",
-            followingCount: 0,
-            followersCount: 0,
-            friendsCount: 0,
-            gemsCount: 0,
-            postCount: posts(forUserId: post.userId).count,
-            email: "",
-            password: "",
-            isBlock: false
+        return userWithRelationFlags(
+            UserModel(
+                userId: post.userId,
+                userName: post.userName,
+                avatarURL: post.avatarURL,
+                signature: "Personal signature~",
+                followingCount: 0,
+                followersCount: 0,
+                friendsCount: 0,
+                gemsCount: 0,
+                postCount: posts(forUserId: post.userId).count,
+                email: "",
+                password: "",
+                isBlock: false,
+                isFollow: false
+            )
         )
     }
 
@@ -530,6 +581,33 @@ enum UserData {
     /// 是否为当前用户本地发布的动态（可删除）
     static func isUserPublishedPost(postId: String) -> Bool {
         loadUserPublishedPosts().contains { $0.postId == postId }
+    }
+
+    /// 清除指定用户在本地的一切互动与发布数据（删号用）
+    static func purgeLocalActivity(forUserId userId: String) {
+        loadUserPublishedPosts()
+            .filter { $0.userId == userId }
+            .forEach { deleteUserPost(postId: $0.postId) }
+
+        savePostLikeStates([:])
+        savePostCollectStates([:])
+
+        var extras = loadPostExtraComments()
+        for (postId, comments) in extras {
+            let filtered = comments.filter { $0.userId != userId }
+            if filtered.isEmpty {
+                extras.removeValue(forKey: postId)
+            } else {
+                extras[postId] = filtered
+            }
+        }
+        savePostExtraComments(extras)
+
+        var overrides = loadAuthorProfileOverrides()
+        overrides.removeValue(forKey: userId)
+        saveAuthorProfileOverrides(overrides)
+
+        saveReportedPostIds([])
     }
 
     /// 删除用户发布的动态及关联本地数据

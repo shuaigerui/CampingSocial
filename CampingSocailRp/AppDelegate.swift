@@ -21,7 +21,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         IQKeyboardManager.shared().shouldResignOnTouchOutside = true
         
         ToastManager.shared.position = .center
-        
+
+        Task { @MainActor in
+            _ = CS_IAPManager.shared
+        }
+
         initializeWindow()
 
         return true

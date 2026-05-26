@@ -92,6 +92,9 @@ class CS_DiscoverVC: CS_BaseVC {
             emptyView.isHidden = displayItems.count > 0
             self.tableView.reloadData()
         }
+        headerView.onLiveItemTapped = { [weak self] item in
+            self?.navigationController?.pushViewController(CS_LiveVC(liveItem: item), animated: true)
+        }
     }
 
 }
@@ -221,9 +224,7 @@ extension CS_DiscoverVC: UITableViewDataSource, UITableViewDelegate {
     }
 
     private func toggleImageFollow(at indexPath: IndexPath) {
-        updateItem(at: indexPath) { item in
-            item.imagePost?.isFollowing.toggle()
-        }
+        toggleFollow(at: indexPath)
     }
 
     private func toggleImageLike(at indexPath: IndexPath) {
@@ -283,9 +284,28 @@ extension CS_DiscoverVC: UITableViewDataSource, UITableViewDelegate {
     }
 
     private func toggleVideoFollow(at indexPath: IndexPath) {
-        updateItem(at: indexPath) { item in
-            item.videoPost?.isFollowing.toggle()
+        toggleFollow(at: indexPath)
+    }
+
+    private func toggleFollow(at indexPath: IndexPath) {
+        let models = displayPostModels
+        guard indexPath.row < models.count else { return }
+        let userId = models[indexPath.row].userId
+        let isFollowing = UserData.toggleFollow(userId: userId)
+        syncFollowState(userId: userId, isFollowing: isFollowing)
+        tableView.reloadData()
+    }
+
+    private func syncFollowState(userId: String, isFollowing: Bool) {
+        func apply(to list: inout [PostModel]) {
+            for index in list.indices where list[index].userId == userId {
+                list[index].isFollowing = isFollowing
+            }
         }
+        apply(to: &forYouPostModels)
+        apply(to: &followingPostModels)
+        forYouItems = forYouPostModels.map { $0.toProfilePostItem() }
+        followingItems = followingPostModels.map { $0.toProfilePostItem() }
     }
 
 }

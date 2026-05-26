@@ -38,9 +38,10 @@ class CS_HomeHeaderView: UIView {
         }
     }
     
-    @objc private func onJoin(){
-        
-        
+    var onJoinTapped: (() -> Void)?
+
+    @objc private func onJoin() {
+        onJoinTapped?()
     }
     
     @objc private func onAI() {

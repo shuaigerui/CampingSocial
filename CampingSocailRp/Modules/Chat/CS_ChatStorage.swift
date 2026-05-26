@@ -39,6 +39,14 @@ enum CS_ChatStorage {
         UserDefaults.standard.removeObject(forKey: messagesKey(peerUserId))
     }
 
+    /// 删除全部私聊会话与消息（删号用）
+    static func deleteAllConversations() {
+        loadSummaries().forEach {
+            UserDefaults.standard.removeObject(forKey: messagesKey($0.peerUserId))
+        }
+        UserDefaults.standard.removeObject(forKey: summariesKey)
+    }
+
     // MARK: - Messages
 
     static func messages(peerUserId: String) -> [CS_ChatRoomMessage] {

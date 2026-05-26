@@ -5,6 +5,8 @@
 //  Created by  mac on 2026/5/22.
 //
 
+import AuthenticationServices
+import Toast_Swift
 import UIKit
 
 class CS_WelcomeVC: CS_BaseVC {
@@ -135,7 +137,21 @@ class CS_WelcomeVC: CS_BaseVC {
     }
 
     @objc private func onAppleSignIn() {
-        navigationController?.pushViewController(CS_SetupInfoVC(mode: .apple), animated: true)
+        let provider = ASAuthorizationAppleIDProvider()
+        let request = provider.createRequest()
+        request.requestedScopes = [.fullName, .email]
+
+        let controller = ASAuthorizationController(authorizationRequests: [request])
+        controller.delegate = self
+        controller.presentationContextProvider = self
+        controller.performRequests()
+    }
+
+    private static func formattedName(from components: PersonNameComponents?) -> String? {
+        guard let components else { return nil }
+        let formatter = PersonNameComponentsFormatter()
+        let name = formatter.string(from: components).trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty ? nil : name
     }
 
     @objc private func onCreateAccount() {
@@ -144,6 +160,47 @@ class CS_WelcomeVC: CS_BaseVC {
 
     @objc private func onSignIn() {
         navigationController?.pushViewController(CS_SetupFormVC(mode: .signIn), animated: true)
+    }
+}
+
+// MARK: - Sign in with Apple
+
+extension CS_WelcomeVC: ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
+
+    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        view.window ?? UIWindow()
+    }
+
+    func authorizationController(
+        controller: ASAuthorizationController,
+        didCompleteWithAuthorization authorization: ASAuthorization
+    ) {
+        guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else {
+            view.makeToast("Apple sign in failed")
+            return
+        }
+
+        let appleUserId = credential.user
+        if CS_CurrentUser.shared.loginExistingAppleAccount(appleUserId: appleUserId) {
+            CS_CurrentUser.shared.switchRoot(on: view.window)
+            return
+        }
+
+        let suggestedName = Self.formattedName(from: credential.fullName)
+        navigationController?.pushViewController(
+            CS_SetupInfoVC(mode: .apple(appleUserId: appleUserId, suggestedName: suggestedName)),
+            animated: true
+        )
+    }
+
+    func authorizationController(
+        controller: ASAuthorizationController,
+        didCompleteWithError error: Error
+    ) {
+        if let authError = error as? ASAuthorizationError, authError.code == .canceled {
+            return
+        }
+        view.makeToast("Apple sign in failed")
     }
 }
 

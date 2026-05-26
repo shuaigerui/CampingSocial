@@ -199,8 +199,9 @@ extension CS_PostDetailVC: UITableViewDataSource, UITableViewDelegate {
     private func bindPostCellActions(_ cell: CS_PostDetailPostCell) {
         cell.onFollowTapped = { [weak self] in
             guard let self else { return }
-            self.post.isFollowing.toggle()
-            self.syncPostModelFromDisplayPost()
+            let isFollowing = UserData.toggleFollow(userId: self.postModel.userId)
+            self.post.isFollowing = isFollowing
+            self.postModel.isFollowing = isFollowing
             self.tableView.reloadSections(IndexSet(integer: Section.post.rawValue), with: .none)
         }
         cell.onLikeTapped = { [weak self] in

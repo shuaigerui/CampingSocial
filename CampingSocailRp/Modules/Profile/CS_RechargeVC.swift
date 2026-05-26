@@ -5,6 +5,7 @@
 //  Created by  mac on 2026/5/25.
 //
 
+import SVProgressHUD
 import Toast_Swift
 import UIKit
 
@@ -17,10 +18,9 @@ class CS_RechargeVC: CS_BaseVC {
         static let gemCardHeight: CGFloat = 95
     }
 
-    private let packages: [CS_RechargePackage] = Array(
-        repeating: CS_RechargePackage(gems: 20, price: "$19.99"),
-        count: 9
-    )
+    private let packages = CS_RechargePackage.catalog
+    private var storePrices: [String: String] = [:]
+    private var isPurchasing = false
 
     private lazy var backButton: UIButton = {
         let btn = UIButton(type: .custom)
@@ -101,6 +101,7 @@ class CS_RechargeVC: CS_BaseVC {
         super.viewDidLoad()
         setupUI()
         refreshGemsCount()
+        loadStoreProducts()
     }
 
     private func setupUI() {
@@ -145,7 +146,25 @@ class CS_RechargeVC: CS_BaseVC {
     }
 
     private func refreshGemsCount() {
-        gemsCountLabel.text = "\(CS_CurrentUser.shared.user?.gemsCount ?? 0)"
+        gemsCountLabel.text = formatGems(CS_CurrentUser.shared.user?.gemsCount ?? 0)
+    }
+
+    private func formatGems(_ count: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        return formatter.string(from: NSNumber(value: count)) ?? "\(count)"
+    }
+
+    private func loadStoreProducts() {
+        Task {
+            let products = await CS_IAPManager.shared.loadProducts()
+            var prices: [String: String] = [:]
+            for product in products {
+                prices[product.id] = product.displayPrice
+            }
+            storePrices = prices
+            collectionView.reloadData()
+        }
     }
 
     @objc private func onBack() {
@@ -153,12 +172,36 @@ class CS_RechargeVC: CS_BaseVC {
     }
 
     private func purchase(package: CS_RechargePackage) {
-        guard CS_CurrentUser.shared.addGems(package.gems) else {
-            view.makeToast("Purchase failed. Please try again.")
-            return
+        guard !isPurchasing else { return }
+        isPurchasing = true
+        SVProgressHUD.show()
+
+        Task {
+            defer {
+                Task { @MainActor in
+                    isPurchasing = false
+                    SVProgressHUD.dismiss()
+                }
+            }
+
+            do {
+                try await CS_IAPManager.shared.purchase(package: package)
+                await MainActor.run {
+                    refreshGemsCount()
+                    view.makeToast("+\(formatGems(package.gems)) gems added")
+                }
+            } catch CS_IAPError.userCancelled {
+                break
+            } catch {
+                await MainActor.run {
+                    let message = (error as? LocalizedError)?.errorDescription
+                        ?? error.localizedDescription
+                    if !message.isEmpty {
+                        view.makeToast(message)
+                    }
+                }
+            }
         }
-        refreshGemsCount()
-        view.makeToast("+\(package.gems) gems added")
     }
 }
 
@@ -180,7 +223,9 @@ extension CS_RechargeVC: UICollectionViewDataSource, UICollectionViewDelegateFlo
         ) as? CS_RechargePackageCell else {
             return UICollectionViewCell()
         }
-        cell.configure(with: packages[indexPath.item])
+        let package = packages[indexPath.item]
+        let price = storePrices[package.productId] ?? package.displayPrice
+        cell.configure(with: package, priceText: price)
         return cell
     }
 
@@ -196,6 +241,6 @@ extension CS_RechargeVC: UICollectionViewDataSource, UICollectionViewDelegateFlo
         let inset = Layout.sectionInset * 2
         let spacing = Layout.itemSpacing * CGFloat(Layout.columnCount - 1)
         let width = (collectionView.bounds.width - inset - spacing) / CGFloat(Layout.columnCount)
-        return CGSize(width: floor(width), height: width * 1.15)
+        return CGSize(width: floor(width), height: floor(width * 1.15))
     }
 }

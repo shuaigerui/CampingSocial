@@ -124,7 +124,29 @@ class CS_SettingVC: CS_BaseVC {
         }
         if items[index].style == .logout {
             confirmLogout()
+            return
         }
+        if index == 5 {
+            confirmDeleteAccount()
+        }
+    }
+
+    private func confirmDeleteAccount() {
+        let alert = UIAlertController(
+            title: "Delete account",
+            message: "Are you sure you want to delete your account? All your posts, likes, collections, comments, and chats will be permanently removed.",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
+            self?.performDeleteAccount()
+        })
+        present(alert, animated: true)
+    }
+
+    private func performDeleteAccount() {
+        CS_CurrentUser.shared.deleteAccount()
+        CS_CurrentUser.shared.switchRoot(on: view.window)
     }
 
     private func confirmLogout() {

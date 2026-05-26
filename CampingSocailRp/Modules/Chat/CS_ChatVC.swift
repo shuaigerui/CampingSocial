@@ -100,7 +100,7 @@ class CS_ChatVC: CS_BaseVC {
 
     private func openChatRoom(at indexPath: IndexPath) {
         guard let user = UserData.user(userId: conversations[indexPath.row].userId) else { return }
-        navigationController?.pushViewController(CS_ChatRoomVC(peer: user), animated: true)
+        openChatRoom(peer: user)
     }
 
     @objc private func friendRequestTapped() {

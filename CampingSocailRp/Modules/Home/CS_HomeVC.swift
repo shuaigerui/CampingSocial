@@ -66,6 +66,9 @@ class CS_HomeVC: CS_BaseVC {
         headerView.onAITapped = { [weak self] in
             self?.navigationController?.pushViewController(CS_AIChatRoomVC(), animated: true)
         }
+        headerView.onJoinTapped = { [weak self] in
+            self?.navigationController?.pushViewController(CS_StarPostVC(), animated: true)
+        }
     }
 
 }
@@ -117,10 +120,7 @@ extension CS_HomeVC: UITableViewDataSource, UITableViewDelegate {
 
     private func bindImageCellActions(_ cell: CS_HomePostCell, indexPath: IndexPath) {
         cell.onFollowTapped = { [weak self] in
-            guard let self, var post = self.posts[indexPath.row].imagePost else { return }
-            post.isFollowing.toggle()
-            self.posts[indexPath.row].imagePost = post
-            self.tableView.reloadRows(at: [indexPath], with: .none)
+            self?.toggleFollow(at: indexPath)
         }
         cell.onLikeTapped = { [weak self] in
             self?.toggleLike(at: indexPath)
@@ -185,12 +185,24 @@ extension CS_HomeVC: UITableViewDataSource, UITableViewDelegate {
         tableView.reloadRows(at: [indexPath], with: .none)
     }
 
+    private func toggleFollow(at indexPath: IndexPath) {
+        guard indexPath.row < postModels.count else { return }
+        let userId = postModels[indexPath.row].userId
+        let isFollowing = UserData.toggleFollow(userId: userId)
+        applyFollowState(userId: userId, isFollowing: isFollowing)
+        tableView.reloadData()
+    }
+
+    private func applyFollowState(userId: String, isFollowing: Bool) {
+        for index in postModels.indices where postModels[index].userId == userId {
+            postModels[index].isFollowing = isFollowing
+        }
+        posts = postModels.map { $0.toProfilePostItem() }
+    }
+
     private func bindVideoCellActions(_ cell: CS_DiscoverFeedCell, indexPath: IndexPath) {
         cell.onFollowTapped = { [weak self] in
-            guard let self, var post = self.posts[indexPath.row].videoPost else { return }
-            post.isFollowing.toggle()
-            self.posts[indexPath.row].videoPost = post
-            self.tableView.reloadRows(at: [indexPath], with: .none)
+            self?.toggleFollow(at: indexPath)
         }
         cell.onLikeTapped = { [weak self] in
             self?.toggleLike(at: indexPath)

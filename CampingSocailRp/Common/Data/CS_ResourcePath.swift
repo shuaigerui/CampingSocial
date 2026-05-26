@@ -7,6 +7,58 @@
 
 import UIKit
 
+/// 用户头像（存 Documents/Avatars，持久化仅存相对路径）
+enum CS_AvatarStorage {
+
+    static let folderName = "Avatars"
+
+    static var directoryURL: URL {
+        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent(folderName, isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+
+    static func fileName(userId: String) -> String {
+        "avatar_\(userId).jpg"
+    }
+
+    static func relativePath(userId: String) -> String {
+        "\(folderName)/\(fileName(userId: userId))"
+    }
+
+    /// 解析 `Avatars/...`、历史绝对路径或 Documents 根目录下的 `avatar_*.jpg`
+    static func resolvePath(_ stored: String) -> String? {
+        let trimmed = stored.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        var candidates: [String] = []
+        let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+
+        if trimmed.hasPrefix("file://"), let url = URL(string: trimmed) {
+            candidates.append(url.path)
+        } else if trimmed.hasPrefix("\(folderName)/") {
+            candidates.append(documents.appendingPathComponent(trimmed).path)
+        } else if trimmed.hasPrefix("/") {
+            candidates.append(trimmed)
+        } else if trimmed.hasPrefix("avatar_") {
+            candidates.append(directoryURL.appendingPathComponent(trimmed).path)
+            candidates.append(documents.appendingPathComponent(trimmed).path)
+        }
+
+        let fileName = (trimmed as NSString).lastPathComponent
+        if fileName.hasPrefix("avatar_") {
+            candidates.append(directoryURL.appendingPathComponent(fileName).path)
+            candidates.append(documents.appendingPathComponent(fileName).path)
+        }
+
+        for path in candidates where FileManager.default.fileExists(atPath: path) {
+            return path
+        }
+        return nil
+    }
+}
+
 /// 用户发布的图片/视频（存 Documents，持久化仅存相对路径）
 enum CS_PostMediaStorage {
 
@@ -75,6 +127,7 @@ enum CS_ResourcePath {
     private static let avatarDir = "Modules/Resource/Avatar"
     private static let postDir = "Modules/Resource/Post"
     private static let videoDir = "Modules/Resource/Video"
+    private static let liveVideoDir = "Modules/Resource/Video/Live"
 
     static func avatar(_ name: String) -> String {
         resolvePath(name: name, ext: "jpg", directory: avatarDir)
@@ -86,6 +139,10 @@ enum CS_ResourcePath {
 
     static func postVideo(_ name: String) -> String {
         resolvePath(name: name, ext: "mp4", directory: videoDir)
+    }
+
+    static func liveVideo(_ name: String) -> String {
+        resolvePath(name: name, ext: "mp4", directory: liveVideoDir)
     }
 
     private static func resolvePath(name: String, ext: String, directory: String) -> String {
@@ -107,6 +164,9 @@ extension String {
     /// 本地 Documents 媒体或历史绝对路径
     var localFilePath: String? {
         guard !isEmpty else { return nil }
+        if let resolved = CS_AvatarStorage.resolvePath(self) {
+            return resolved
+        }
         if let resolved = CS_PostMediaStorage.resolvePath(self) {
             return resolved
         }
