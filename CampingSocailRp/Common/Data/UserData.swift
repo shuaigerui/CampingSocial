@@ -126,7 +126,9 @@ enum UserData {
         let withCollects = applyPostCollectStates(to: withLikes)
         let withComments = applyPostExtraComments(to: withCollects)
         let withAuthors = applyAuthorProfileOverrides(to: withComments)
-        return applyReportStates(to: withAuthors).filter { !$0.isReport }
+        let blocked = Set(CS_UserListStorage.userIds(for: .blockList))
+        return applyReportStates(to: withAuthors)
+            .filter { !$0.isReport && !blocked.contains($0.userId) }
     }
 
     // MARK: - Author Profile（编辑资料后同步动态作者展示）
@@ -525,12 +527,95 @@ enum UserData {
         saveUserPublishedPosts(list)
     }
 
+    /// 是否为当前用户本地发布的动态（可删除）
+    static func isUserPublishedPost(postId: String) -> Bool {
+        loadUserPublishedPosts().contains { $0.postId == postId }
+    }
+
+    /// 删除用户发布的动态及关联本地数据
+    @discardableResult
+    static func deleteUserPost(postId: String) -> Bool {
+        var list = loadUserPublishedPosts()
+        guard let index = list.firstIndex(where: { $0.postId == postId }) else {
+            return false
+        }
+        let post = list.remove(at: index)
+        saveUserPublishedPosts(list)
+        removePostMediaFiles(for: post)
+        cleanupPostLocalState(postId: postId)
+        return true
+    }
+
+    private static func cleanupPostLocalState(postId: String) {
+        var likes = loadPostLikeStates()
+        likes.removeValue(forKey: postId)
+        savePostLikeStates(likes)
+
+        var collects = loadPostCollectStates()
+        collects.removeValue(forKey: postId)
+        savePostCollectStates(collects)
+
+        var extras = loadPostExtraComments()
+        extras.removeValue(forKey: postId)
+        savePostExtraComments(extras)
+
+        var reported = loadReportedPostIds()
+        if reported.remove(postId) != nil {
+            saveReportedPostIds(reported)
+        }
+    }
+
+    private static func removePostMediaFiles(for post: PostModel) {
+        let fm = FileManager.default
+        let dir = CS_PostMediaStorage.directoryURL
+        if post.media.isImages {
+            for path in post.media.imageURLs {
+                if let absolute = CS_PostMediaStorage.resolvePath(path) {
+                    try? fm.removeItem(atPath: absolute)
+                }
+            }
+            (try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil))?
+                .filter { $0.lastPathComponent.hasPrefix("\(post.postId)_") }
+                .forEach { try? fm.removeItem(at: $0) }
+        }
+        if let cover = post.media.videoCoverURL,
+           let absolute = CS_PostMediaStorage.resolvePath(cover) {
+            try? fm.removeItem(atPath: absolute)
+        }
+        if let video = post.media.videoURL,
+           let absolute = CS_PostMediaStorage.resolvePath(video) {
+            try? fm.removeItem(atPath: absolute)
+        }
+    }
+
     static func loadUserPublishedPosts() -> [PostModel] {
         guard let data = UserDefaults.standard.data(forKey: userPublishedPostsKey),
               let posts = try? JSONDecoder().decode([PostModel].self, from: data) else {
             return []
         }
-        return posts
+        let migrated = migratePublishedPostMediaPaths(posts)
+        if migrated != posts {
+            saveUserPublishedPosts(migrated)
+        }
+        return migrated
+    }
+
+    private static func migratePublishedPostMediaPaths(_ posts: [PostModel]) -> [PostModel] {
+        posts.map { post in
+            var updated = post
+            if updated.media.isImages {
+                updated.media.imageURLs = updated.media.imageURLs.map {
+                    CS_PostMediaStorage.normalizeStoredPath($0)
+                }
+            }
+            if let cover = updated.media.videoCoverURL {
+                updated.media.videoCoverURL = CS_PostMediaStorage.normalizeStoredPath(cover)
+            }
+            if let video = updated.media.videoURL {
+                updated.media.videoURL = CS_PostMediaStorage.normalizeStoredPath(video)
+            }
+            return updated
+        }
     }
 
     private static func saveUserPublishedPosts(_ posts: [PostModel]) {
@@ -540,10 +625,18 @@ enum UserData {
 
     static func savePostImages(_ images: [UIImage], postId: String) -> [String] {
         images.enumerated().compactMap { index, image in
-            guard let data = image.jpegData(compressionQuality: 0.85) else { return nil }
-            let url = postMediaDirectory().appendingPathComponent("\(postId)_\(index).jpg")
-            try? data.write(to: url, options: .atomic)
-            return url.path
+            guard let data = image.jpegData(compressionQuality: 0.85) ?? image.pngData() else {
+                return nil
+            }
+            let fileName = "\(postId)_\(index).jpg"
+            let url = CS_PostMediaStorage.fileURL(fileName: fileName)
+            do {
+                try data.write(to: url, options: .atomic)
+                guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+                return CS_PostMediaStorage.relativePath(fileName: fileName)
+            } catch {
+                return nil
+            }
         }
     }
 
@@ -552,26 +645,37 @@ enum UserData {
         videoURL: URL,
         postId: String
     ) -> (coverPath: String, videoPath: String)? {
-        let coverURL = postMediaDirectory().appendingPathComponent("\(postId)_cover.jpg")
-        let destVideoURL = postMediaDirectory().appendingPathComponent("\(postId).mp4")
-        guard let coverData = thumbnail.jpegData(compressionQuality: 0.85) else { return nil }
+        let coverFileName = "\(postId)_cover.jpg"
+        let videoFileName = "\(postId).mp4"
+        let coverURL = CS_PostMediaStorage.fileURL(fileName: coverFileName)
+        let destVideoURL = CS_PostMediaStorage.fileURL(fileName: videoFileName)
+        guard let coverData = thumbnail.jpegData(compressionQuality: 0.85) ?? thumbnail.pngData() else {
+            return nil
+        }
         do {
             try coverData.write(to: coverURL, options: .atomic)
             if FileManager.default.fileExists(atPath: destVideoURL.path) {
                 try FileManager.default.removeItem(at: destVideoURL)
             }
-            try FileManager.default.copyItem(at: videoURL, to: destVideoURL)
-            return (coverURL.path, destVideoURL.path)
+            try copyVideoFile(from: videoURL, to: destVideoURL)
+            guard FileManager.default.fileExists(atPath: destVideoURL.path) else { return nil }
+            return (
+                CS_PostMediaStorage.relativePath(fileName: coverFileName),
+                CS_PostMediaStorage.relativePath(fileName: videoFileName)
+            )
         } catch {
             return nil
         }
     }
 
-    private static func postMediaDirectory() -> URL {
-        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("UserPosts", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir
+    private static func copyVideoFile(from source: URL, to destination: URL) throws {
+        let accessed = source.startAccessingSecurityScopedResource()
+        defer {
+            if accessed {
+                source.stopAccessingSecurityScopedResource()
+            }
+        }
+        try FileManager.default.copyItem(at: source, to: destination)
     }
 
     // MARK: - Builders

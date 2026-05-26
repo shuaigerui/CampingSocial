@@ -272,8 +272,9 @@ final class CS_HomePostCell: UITableViewCell {
         contentLabel.text = post.content
         likeCountLabel.text = "\(post.likeCount)"
         commentCountLabel.text = "\(post.commentCount)"
-        followButton.isHidden = !showsFollowButton
-        if showsFollowButton {
+        let isOwnPost = showsDelete
+        followButton.isHidden = isOwnPost || !showsFollowButton
+        if showsFollowButton, !isOwnPost {
             updateFollowButton(isFollowing: post.isFollowing)
         }
         updateLikeButton(isLiked: post.isLiked)

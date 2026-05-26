@@ -5,13 +5,20 @@
 //  Created by  mac on 2026/5/25.
 //
 
+import Toast_Swift
 import UIKit
 
 class CS_PersonVC: CS_BaseVC {
 
     private let user: UserModel
     private var isFollowing: Bool
+    private var postModels: [PostModel] = []
     private var posts: [CS_ProfilePostItem] = []
+
+    private var isCurrentUser: Bool {
+        guard let currentId = CS_CurrentUser.shared.user?.userId else { return false }
+        return currentId == user.userId
+    }
 
     private lazy var headerView = CS_PersonHeaderView()
 
@@ -59,11 +66,17 @@ class CS_PersonVC: CS_BaseVC {
 
     private func loadData() {
         let userPosts = UserData.posts(forUserId: user.userId)
+        postModels = userPosts
         posts = userPosts.map { $0.toProfilePostItem() }
-        headerView.configure(with: user, postCount: userPosts.count, isFollowing: isFollowing)
+        headerView.configure(
+            with: user,
+            postCount: userPosts.count,
+            isFollowing: isFollowing,
+            isCurrentUser: isCurrentUser
+        )
         tableView.reloadData()
     }
-
+    
     private func setupTableView() {
         view.addSubview(tableView)
         tableView.snp.makeConstraints { make in
@@ -83,9 +96,12 @@ class CS_PersonVC: CS_BaseVC {
             self?.toggleFollow()
         }
         headerView.onMoreTapped = { [weak self] in
-            self?.navigationController?.pushViewController(CS_ReportVC(), animated: true)
+            self?.confirmBlockUser()
         }
-        headerView.onChatTapped = {}
+        headerView.onChatTapped = { [weak self] in
+            guard let self, !self.isCurrentUser else { return }
+            self.navigationController?.pushViewController(CS_ChatRoomVC(peer: self.user), animated: true)
+        }
     }
 
     private func toggleFollow() {
@@ -93,8 +109,30 @@ class CS_PersonVC: CS_BaseVC {
         headerView.configure(
             with: user,
             postCount: posts.count,
-            isFollowing: isFollowing
+            isFollowing: isFollowing,
+            isCurrentUser: isCurrentUser
         )
+    }
+
+    private func confirmBlockUser() {
+        guard CS_CurrentUser.shared.user?.userId != user.userId else { return }
+
+        let alert = UIAlertController(
+            title: "Block User",
+            message: "You will no longer see posts from \(user.userName). Your chat history will be deleted and they will be added to your blacklist.",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Block", style: .destructive) { [weak self] _ in
+            self?.performBlockUser()
+        })
+        present(alert, animated: true)
+    }
+
+    private func performBlockUser() {
+        CS_UserListStorage.blockUser(userId: user.userId)
+        view.makeToast("Blocked \(user.userName)")
+        navigationController?.popViewController(animated: true)
     }
 }
 
@@ -106,6 +144,7 @@ extension CS_PersonVC: UITableViewDataSource {
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let item = posts[indexPath.row]
+        let showsDelete = CS_CurrentUser.shared.ownsPost(userId: postModels[indexPath.row].userId)
 
         switch item.kind {
         case .image:
@@ -116,7 +155,8 @@ extension CS_PersonVC: UITableViewDataSource {
                   let post = item.imagePost else {
                 return UITableViewCell()
             }
-            cell.configure(with: post, showsFollowButton: false)
+            cell.configure(with: post, showsDelete: showsDelete, showsFollowButton: false)
+            bindImageCellActions(cell, indexPath: indexPath)
             return cell
 
         case .video:
@@ -127,8 +167,68 @@ extension CS_PersonVC: UITableViewDataSource {
                   let post = item.videoPost else {
                 return UITableViewCell()
             }
-            cell.configure(with: post, showsFollowButton: false)
+            cell.configure(with: post, showsDelete: showsDelete, showsFollowButton: false)
+            bindVideoCellActions(cell, indexPath: indexPath)
             return cell
+        }
+    }
+
+    private func bindImageCellActions(_ cell: CS_HomePostCell, indexPath: IndexPath) {
+        cell.onLikeTapped = { [weak self] in
+            self?.toggleLike(at: indexPath)
+        }
+        cell.onCollectTapped = { [weak self] in
+            self?.toggleCollect(at: indexPath)
+        }
+        cell.onDeleteTapped = { [weak self] in
+            self?.deletePost(at: indexPath)
+        }
+    }
+
+    private func bindVideoCellActions(_ cell: CS_DiscoverFeedCell, indexPath: IndexPath) {
+        cell.onLikeTapped = { [weak self] in
+            self?.toggleLike(at: indexPath)
+        }
+        cell.onCollectTapped = { [weak self] in
+            self?.toggleCollect(at: indexPath)
+        }
+        cell.onDeleteTapped = { [weak self] in
+            self?.deletePost(at: indexPath)
+        }
+    }
+
+    private func toggleLike(at indexPath: IndexPath) {
+        guard indexPath.row < postModels.count else { return }
+        var model = postModels[indexPath.row]
+        let result = UserData.toggleLike(
+            postId: model.postId,
+            isLiked: model.isLiked,
+            likeCount: model.likeCount
+        )
+        model.isLiked = result.isLiked
+        model.likeCount = result.likeCount
+        postModels[indexPath.row] = model
+        posts[indexPath.row] = model.toProfilePostItem()
+        tableView.reloadRows(at: [indexPath], with: .none)
+    }
+
+    private func toggleCollect(at indexPath: IndexPath) {
+        guard indexPath.row < postModels.count else { return }
+        var model = postModels[indexPath.row]
+        model.isCollected = UserData.toggleCollect(
+            postId: model.postId,
+            isCollected: model.isCollected
+        )
+        postModels[indexPath.row] = model
+        posts[indexPath.row] = model.toProfilePostItem()
+        tableView.reloadRows(at: [indexPath], with: .none)
+    }
+
+    private func deletePost(at indexPath: IndexPath) {
+        guard indexPath.row < postModels.count else { return }
+        let postId = postModels[indexPath.row].postId
+        confirmDeletePost(postId: postId) { [weak self] in
+            self?.loadData()
         }
     }
 }

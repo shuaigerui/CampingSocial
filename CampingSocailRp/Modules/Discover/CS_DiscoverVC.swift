@@ -39,6 +39,7 @@ class CS_DiscoverVC: CS_BaseVC {
     }()
 
     private lazy var headerView = CS_DiscoverHeaderView()
+    private lazy var emptyView = CS_EmptyView()
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
@@ -56,10 +57,16 @@ class CS_DiscoverVC: CS_BaseVC {
         forYouPostModels = all
         forYouItems = all.map { $0.toProfilePostItem() }
 
-        followingPostModels = all
-        followingItems = forYouItems
-
+        refreshFollowingFeed()
+        emptyView.isHidden = displayItems.count > 0
         tableView.reloadData()
+    }
+
+    /// Following：仅展示已关注用户发布的动态
+    private func refreshFollowingFeed() {
+        let followingIds = Set(CS_UserListStorage.userIds(for: .following))
+        followingPostModels = forYouPostModels.filter { followingIds.contains($0.userId) }
+        followingItems = followingPostModels.map { $0.toProfilePostItem() }
     }
 
     private func setupTableView() {
@@ -68,15 +75,22 @@ class CS_DiscoverVC: CS_BaseVC {
             make.leading.trailing.equalToSuperview()
             make.top.bottom.equalTo(view.safeAreaLayoutGuide)
         }
-
+        view.addSubview(emptyView)
+        emptyView.snp.makeConstraints { make in
+            make.centerX.equalToSuperview()
+            make.centerY.equalToSuperview().offset(50)
+        }
         let width = UIScreen.main.bounds.width
         headerView.frame = CGRect(x: 0, y: 0, width: width, height: CS_DiscoverHeaderView.preferredHeight)
         headerView.layoutIfNeeded()
         tableView.tableHeaderView = headerView
 
         headerView.onSegmentChanged = { [weak self] tag in
-            self?.currentSegment = tag
-            self?.tableView.reloadData()
+            guard let self else { return }
+            self.currentSegment = tag
+            self.refreshFollowingFeed()
+            emptyView.isHidden = displayItems.count > 0
+            self.tableView.reloadData()
         }
     }
 
@@ -90,6 +104,8 @@ extension CS_DiscoverVC: UITableViewDataSource, UITableViewDelegate {
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let item = displayItems[indexPath.row]
+        let model = displayPostModels[indexPath.row]
+        let showsDelete = CS_CurrentUser.shared.ownsPost(userId: model.userId)
 
         switch item.kind {
         case .image:
@@ -100,7 +116,7 @@ extension CS_DiscoverVC: UITableViewDataSource, UITableViewDelegate {
                   let post = item.imagePost else {
                 return UITableViewCell()
             }
-            cell.configure(with: post)
+            cell.configure(with: post, showsDelete: showsDelete, showsFollowButton: !showsDelete)
             bindImageCellActions(cell, indexPath: indexPath)
             return cell
 
@@ -112,7 +128,7 @@ extension CS_DiscoverVC: UITableViewDataSource, UITableViewDelegate {
                   let post = item.videoPost else {
                 return UITableViewCell()
             }
-            cell.configure(with: post)
+            cell.configure(with: post, showsDelete: showsDelete, showsFollowButton: !showsDelete)
             bindVideoCellActions(cell, indexPath: indexPath)
             return cell
         }
@@ -139,11 +155,23 @@ extension CS_DiscoverVC: UITableViewDataSource, UITableViewDelegate {
         cell.onReportTapped = { [weak self] in
             self?.openReport(at: indexPath)
         }
+        cell.onDeleteTapped = { [weak self] in
+            self?.confirmDeletePost(at: indexPath)
+        }
         cell.onAvatarTapped = { [weak self] in
             guard let self else { return }
             let models = self.displayPostModels
             guard indexPath.row < models.count else { return }
             self.pushPerson(post: models[indexPath.row])
+        }
+    }
+
+    private func confirmDeletePost(at indexPath: IndexPath) {
+        let models = displayPostModels
+        guard indexPath.row < models.count else { return }
+        let postId = models[indexPath.row].postId
+        confirmDeletePost(postId: postId) { [weak self] in
+            self?.loadData()
         }
     }
 
@@ -170,6 +198,9 @@ extension CS_DiscoverVC: UITableViewDataSource, UITableViewDelegate {
         }
         cell.onReportTapped = { [weak self] in
             self?.openReport(at: indexPath)
+        }
+        cell.onDeleteTapped = { [weak self] in
+            self?.confirmDeletePost(at: indexPath)
         }
         cell.onPlayTapped = {}
         cell.onAvatarTapped = { [weak self] in

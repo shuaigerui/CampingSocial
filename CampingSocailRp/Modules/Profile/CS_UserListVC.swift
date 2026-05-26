@@ -16,9 +16,6 @@ class CS_UserListVC: CS_BaseVC {
     private lazy var backButton: UIButton = {
         let btn = UIButton(type: .custom)
         btn.setImage("common_back".toImage, for: .normal)
-        btn.backgroundColor = UIColor.black.withAlphaComponent(0.35)
-        btn.layer.cornerRadius = 12
-        btn.clipsToBounds = true
         btn.addTarget(self, action: #selector(onBack), for: .touchUpInside)
         return btn
     }()
@@ -44,15 +41,7 @@ class CS_UserListVC: CS_BaseVC {
         return tv
     }()
 
-    private let emptyLabel: UILabel = {
-        let v = UILabel()
-        v.text = "No users yet"
-        v.font = .systemFont(ofSize: 15)
-        v.textColor = UIColor.white.withAlphaComponent(0.8)
-        v.textAlignment = .center
-        v.isHidden = true
-        return v
-    }()
+    private let emptyView = CS_EmptyView()
 
     init(kind: CS_UserListKind) {
         self.kind = kind
@@ -87,7 +76,7 @@ class CS_UserListVC: CS_BaseVC {
         view.addSubview(backButton)
         view.addSubview(titleLabel)
         view.addSubview(tableView)
-        view.addSubview(emptyLabel)
+        view.addSubview(emptyView)
 
         backButton.snp.makeConstraints { make in
             make.top.equalTo(view.safeAreaLayoutGuide).offset(8)
@@ -107,14 +96,14 @@ class CS_UserListVC: CS_BaseVC {
             make.left.right.bottom.equalToSuperview()
         }
 
-        emptyLabel.snp.makeConstraints { make in
+        emptyView.snp.makeConstraints { make in
             make.center.equalTo(tableView)
         }
     }
 
     private func reloadData() {
         users = CS_UserListStorage.users(for: kind)
-        emptyLabel.isHidden = !users.isEmpty
+        emptyView.isHidden = !users.isEmpty
         tableView.reloadData()
     }
 
@@ -147,7 +136,7 @@ class CS_UserListVC: CS_BaseVC {
         guard users.indices.contains(indexPath.row) else { return }
         users.remove(at: indexPath.row)
         tableView.deleteRows(at: [indexPath], with: .automatic)
-        emptyLabel.isHidden = !users.isEmpty
+        emptyView.isHidden = !users.isEmpty
     }
 
     @objc private func onBack() {

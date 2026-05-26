@@ -20,7 +20,7 @@ class CS_EmptyView: UIView {
             make.width.height.equalTo(64)
         }
         emptyLabel.snp.makeConstraints { make in
-            make.centerX.equalToSuperview()
+            make.centerX.bottom.equalToSuperview()
             make.top.equalTo(emptyView.snp.bottom).offset(17)
         }
     }
@@ -28,7 +28,7 @@ class CS_EmptyView: UIView {
     private let emptyView: UIImageView = {
         let v = UIImageView()
         v.contentMode = .scaleAspectFill
-        v.image = "common_empty".toImage
+        v.image = UIImage(named: "common_emtpy")
         return v
     }()
     private let emptyLabel: UILabel = {

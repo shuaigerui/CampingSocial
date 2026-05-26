@@ -85,9 +85,6 @@ class CS_ProfileVC: CS_BaseVC {
         headerView.onFriendsTapped = { [weak self] in
             self?.pushUserList(.friends)
         }
-        headerView.onFriendRequestTapped = { [weak self] in
-            self?.pushUserList(.friendRequest)
-        }
     }
 
     private func pushUserList(_ kind: CS_UserListKind) {
@@ -114,7 +111,8 @@ extension CS_ProfileVC: UITableViewDataSource, UITableViewDelegate {
                   let post = item.imagePost else {
                 return UITableViewCell()
             }
-            cell.configure(with: post, showsDelete: true, showsFollowButton: false)
+            let isOwn = CS_CurrentUser.shared.ownsPost(userId: postModels[indexPath.row].userId)
+            cell.configure(with: post, showsDelete: isOwn, showsFollowButton: false)
             bindImageCellActions(cell, indexPath: indexPath)
             return cell
 
@@ -126,7 +124,8 @@ extension CS_ProfileVC: UITableViewDataSource, UITableViewDelegate {
                   let post = item.videoPost else {
                 return UITableViewCell()
             }
-            cell.configure(with: post, showsDelete: true, showsFollowButton: false)
+            let isOwn = CS_CurrentUser.shared.ownsPost(userId: postModels[indexPath.row].userId)
+            cell.configure(with: post, showsDelete: isOwn, showsFollowButton: false)
             bindVideoCellActions(cell, indexPath: indexPath)
             return cell
         }
@@ -184,7 +183,10 @@ extension CS_ProfileVC: UITableViewDataSource, UITableViewDelegate {
     }
 
     private func deletePost(at indexPath: IndexPath) {
-        posts.remove(at: indexPath.row)
-        tableView.deleteRows(at: [indexPath], with: .automatic)
+        guard indexPath.row < postModels.count else { return }
+        let postId = postModels[indexPath.row].postId
+        confirmDeletePost(postId: postId) { [weak self] in
+            self?.loadData()
+        }
     }
 }

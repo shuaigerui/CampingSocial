@@ -78,6 +78,8 @@ extension CS_HomeVC: UITableViewDataSource, UITableViewDelegate {
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let item = posts[indexPath.row]
+        let model = postModels[indexPath.row]
+        let showsDelete = CS_CurrentUser.shared.ownsPost(userId: model.userId)
 
         switch item.kind {
         case .image:
@@ -88,7 +90,7 @@ extension CS_HomeVC: UITableViewDataSource, UITableViewDelegate {
                   let post = item.imagePost else {
                 return UITableViewCell()
             }
-            cell.configure(with: post)
+            cell.configure(with: post, showsDelete: showsDelete, showsFollowButton: !showsDelete)
             bindImageCellActions(cell, indexPath: indexPath)
             return cell
 
@@ -100,7 +102,7 @@ extension CS_HomeVC: UITableViewDataSource, UITableViewDelegate {
                   let post = item.videoPost else {
                 return UITableViewCell()
             }
-            cell.configure(with: post)
+            cell.configure(with: post, showsDelete: showsDelete, showsFollowButton: !showsDelete)
             bindVideoCellActions(cell, indexPath: indexPath)
             return cell
         }
@@ -129,9 +131,20 @@ extension CS_HomeVC: UITableViewDataSource, UITableViewDelegate {
         cell.onReportTapped = { [weak self] in
             self?.openReport(at: indexPath)
         }
+        cell.onDeleteTapped = { [weak self] in
+            self?.confirmDeletePost(at: indexPath)
+        }
         cell.onAvatarTapped = { [weak self] in
             guard let self, indexPath.row < self.postModels.count else { return }
             self.pushPerson(post: self.postModels[indexPath.row])
+        }
+    }
+
+    private func confirmDeletePost(at indexPath: IndexPath) {
+        guard indexPath.row < postModels.count else { return }
+        let postId = postModels[indexPath.row].postId
+        confirmDeletePost(postId: postId) { [weak self] in
+            self?.loadData()
         }
     }
 
@@ -187,6 +200,9 @@ extension CS_HomeVC: UITableViewDataSource, UITableViewDelegate {
         }
         cell.onReportTapped = { [weak self] in
             self?.openReport(at: indexPath)
+        }
+        cell.onDeleteTapped = { [weak self] in
+            self?.confirmDeletePost(at: indexPath)
         }
         cell.onPlayTapped = {}
         cell.onAvatarTapped = { [weak self] in

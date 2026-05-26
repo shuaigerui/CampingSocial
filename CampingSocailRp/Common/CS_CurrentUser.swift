@@ -33,6 +33,11 @@ final class CS_CurrentUser {
 
     var isLoggedIn: Bool { user != nil }
 
+    /// 是否为当前登录用户发布的动态
+    func ownsPost(userId: String) -> Bool {
+        user?.userId == userId
+    }
+
     private init() {}
 
     // MARK: - Launch
@@ -169,6 +174,16 @@ final class CS_CurrentUser {
     @discardableResult
     func publishPost(_ post: PostModel) -> Bool {
         UserData.addUserPost(post)
+        guard var current = user, let kind = loginKind else { return true }
+        current.postCount = UserData.posts(forUserId: current.userId).count
+        syncRegisteredUserIfNeeded(current, kind: kind)
+        return persist(user: current, kind: kind)
+    }
+
+    /// 删除当前用户发布的动态（本地持久化）
+    @discardableResult
+    func deletePost(postId: String) -> Bool {
+        guard UserData.deleteUserPost(postId: postId) else { return false }
         guard var current = user, let kind = loginKind else { return true }
         current.postCount = UserData.posts(forUserId: current.userId).count
         syncRegisteredUserIfNeeded(current, kind: kind)

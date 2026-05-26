@@ -232,7 +232,12 @@ final class CS_DiscoverFeedCell: UITableViewCell {
         showsFollowButton: Bool = true
     ) {
         coverLoadVideoPath = item.videoPath
-        if let videoPath = item.videoPath, !videoPath.isEmpty {
+        if let coverPath = item.coverImagePath,
+           !coverPath.isEmpty,
+           let image = coverPath.resourceFileImage {
+            coverImageView.image = image
+            coverImageView.backgroundColor = .clear
+        } else if let videoPath = item.videoPath, !videoPath.isEmpty {
             coverImageView.image = nil
             coverImageView.backgroundColor = UIColor(hex: "#C5D4B0")
             if let cached = CS_VideoThumbnail.cachedImage(forVideoPath: videoPath) {
@@ -242,7 +247,7 @@ final class CS_DiscoverFeedCell: UITableViewCell {
                 CS_VideoThumbnail.loadFirstFrame(forVideoPath: videoPath) { [weak self] image in
                     guard let self, self.coverLoadVideoPath == videoPath else { return }
                     self.coverImageView.image = image
-                    self.coverImageView.backgroundColor = image == nil
+                    coverImageView.backgroundColor = image == nil
                         ? UIColor(hex: "#C5D4B0") : .clear
                 }
             }
@@ -256,14 +261,15 @@ final class CS_DiscoverFeedCell: UITableViewCell {
         }
         contentLabel.text = item.content
         userNameLabel.text = item.userName.uppercased()
-        followButton.isHidden = !showsFollowButton
-        if showsFollowButton {
+        let isOwnPost = showsDelete
+        followButton.isHidden = isOwnPost || !showsFollowButton
+        if showsFollowButton, !isOwnPost {
             updateFollowButton(isFollowing: item.isFollowing)
         }
         likeCountLabel.text = "\(item.likeCount)"
         updateLikeButton(isLiked: item.isLiked)
         updateCollectButton(isCollected: item.isCollected)
-        setShowsDeleteButton(showsDelete, showsFollowButton: showsFollowButton)
+        setShowsDeleteButton(showsDelete, showsFollowButton: showsFollowButton && !isOwnPost)
 
         if let avatarPath = item.avatarPath, !avatarPath.isEmpty {
             avatarView.image = avatarPath.resourceFileImage ?? avatarPath.toImage

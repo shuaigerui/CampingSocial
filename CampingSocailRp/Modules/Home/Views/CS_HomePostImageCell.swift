@@ -33,9 +33,13 @@ final class CS_HomePostImageCell: UICollectionViewCell {
     }
 
     func configure(path: String) {
-        imageView.image = path.resourceFileImage
-        imageView.backgroundColor = imageView.image == nil
-            ? UIColor(hex: "#E8DFC8") : .clear
+        if let image = path.resourceFileImage {
+            imageView.image = image
+            imageView.backgroundColor = .clear
+        } else {
+            imageView.image = nil
+            imageView.backgroundColor = UIColor(hex: "#E8DFC8")
+        }
     }
 
     func configure(color: UIColor) {

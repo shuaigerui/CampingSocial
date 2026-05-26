@@ -73,12 +73,22 @@ enum CS_UserListStorage {
         saveIds(list, key: Key.blockList)
     }
 
+    static func isBlocked(userId: String) -> Bool {
+        userIds(for: .blockList).contains(userId)
+    }
+
     static func addToBlockList(userId: String) {
         var list = userIds(for: .blockList)
         guard !list.contains(userId) else { return }
         list.append(userId)
         saveIds(list, key: Key.blockList)
         removeFromAllListsExceptBlock(userId: userId)
+    }
+
+    /// 拉黑：加入黑名单、移出关注/好友等列表，并删除与该用户的聊天记录
+    static func blockUser(userId: String) {
+        addToBlockList(userId: userId)
+        CS_ChatStorage.deleteConversation(peerUserId: userId)
     }
 
     // MARK: - Bootstrap

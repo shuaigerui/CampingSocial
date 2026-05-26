@@ -487,8 +487,21 @@ extension CS_PushPostVC: PHPickerViewControllerDelegate {
             provider.loadFileRepresentation(forTypeIdentifier: movieType) { [weak self] url, _ in
                 guard let self, let url else { return }
                 let tempURL = FileManager.default.temporaryDirectory
-                    .appendingPathComponent(UUID().uuidString + ".mov")
-                try? FileManager.default.copyItem(at: url, to: tempURL)
+                    .appendingPathComponent(UUID().uuidString + ".mp4")
+                let accessed = url.startAccessingSecurityScopedResource()
+                defer {
+                    if accessed {
+                        url.stopAccessingSecurityScopedResource()
+                    }
+                }
+                do {
+                    if FileManager.default.fileExists(atPath: tempURL.path) {
+                        try FileManager.default.removeItem(at: tempURL)
+                    }
+                    try FileManager.default.copyItem(at: url, to: tempURL)
+                } catch {
+                    return
+                }
                 let thumb = Self.thumbnail(for: tempURL) ?? UIImage()
                 DispatchQueue.main.async {
                     self.setVideo(thumbnail: thumb, url: tempURL)

@@ -15,7 +15,6 @@ class CS_ProfileHeaderView: UIView {
     var onFollowingTapped: (() -> Void)?
     var onFollowersTapped: (() -> Void)?
     var onFriendsTapped: (() -> Void)?
-    var onFriendRequestTapped: (() -> Void)?
 
     private let titleLabel: UILabel = {
         let v = UILabel()
@@ -296,7 +295,7 @@ class CS_ProfileHeaderView: UIView {
         statsStack.addArrangedSubview(
             makeStatItem(
                 value: "\(user.friendsCount)",
-                title: requestCount > 0 ? "Friends(\(requestCount))" : "Friends",
+                title: "Friends",
                 action: #selector(friendsTapped)
             )
         )
@@ -323,10 +322,6 @@ class CS_ProfileHeaderView: UIView {
     }
 
     @objc private func friendsTapped() {
-        if CS_UserListStorage.count(for: .friendRequest) > 0 {
-            onFriendRequestTapped?()
-        } else {
-            onFriendsTapped?()
-        }
+        onFriendsTapped?()
     }
 }

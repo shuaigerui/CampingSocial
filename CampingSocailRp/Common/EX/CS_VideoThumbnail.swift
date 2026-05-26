@@ -45,7 +45,9 @@ enum CS_VideoThumbnail {
     }
 
     private static func generateImage(forVideoPath path: String) -> UIImage? {
-        guard let url = path.resourceFileURL else { return nil }
+        guard let url = path.resourceFileURL ?? path.localFilePath.map({ URL(fileURLWithPath: $0) }) else {
+            return nil
+        }
         let asset = AVAsset(url: url)
         let generator = AVAssetImageGenerator(asset: asset)
         generator.appliesPreferredTrackTransform = true

@@ -227,12 +227,21 @@ final class CS_PersonHeaderView: UIView {
         }
     }
 
-    func configure(with user: UserModel, postCount: Int, isFollowing: Bool) {
+    func configure(
+        with user: UserModel,
+        postCount: Int,
+        isFollowing: Bool,
+        isCurrentUser: Bool = false
+    ) {
         nameLabel.text = user.userName
         idLabel.text = user.displayID
         signatureLabel.text = user.signature
         postsTitleLabel.text = "Posts(\(postCount))"
         updateFollowButton(isFollowing: isFollowing)
+
+        followButton.isHidden = isCurrentUser
+        moreButton.isHidden = isCurrentUser
+        chatButton.isHidden = isCurrentUser
 
         if let avatarPath = user.avatarURL, !avatarPath.isEmpty {
             let image = avatarPath.resourceFileImage ?? avatarPath.toImage

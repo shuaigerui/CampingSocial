@@ -12,12 +12,13 @@ enum CS_ChatStorage {
 
     private static let summariesKey = "cs.chat.conversationSummaries"
     private static let messagesKeyPrefix = "cs.chat.messages."
-    private static let didBootstrapKey = "cs.chat.didBootstrap"
+    private static let legacyBootstrapKey = "cs.chat.didBootstrap"
+    private static let clearedLegacyBootstrapKey = "cs.chat.clearedLegacyBootstrap"
 
     // MARK: - Conversations
 
     static func conversationList() -> [CS_ChatConversation] {
-        bootstrapIfNeeded()
+        clearLegacyBootstrapDataIfNeeded()
         return loadSummaries()
             .sorted { $0.lastMessageAt > $1.lastMessageAt }
             .map { summary in
@@ -93,15 +94,19 @@ enum CS_ChatStorage {
         )
     }
 
-    // MARK: - Bootstrap
+    /// 清除旧版本为所有本地用户自动生成的假会话（仅执行一次）
+    private static func clearLegacyBootstrapDataIfNeeded() {
+        guard !UserDefaults.standard.bool(forKey: clearedLegacyBootstrapKey) else { return }
+        UserDefaults.standard.set(true, forKey: clearedLegacyBootstrapKey)
 
-    private static func bootstrapIfNeeded() {
-        guard !UserDefaults.standard.bool(forKey: didBootstrapKey) else { return }
-        UserDefaults.standard.set(true, forKey: didBootstrapKey)
+        guard UserDefaults.standard.bool(forKey: legacyBootstrapKey) else { return }
+        UserDefaults.standard.removeObject(forKey: legacyBootstrapKey)
 
-        for user in UserData.localUsers {
-            ensurePeerGreetingIfEmpty(peer: user)
+        let summaries = loadSummaries()
+        summaries.forEach {
+            UserDefaults.standard.removeObject(forKey: messagesKey($0.peerUserId))
         }
+        UserDefaults.standard.removeObject(forKey: summariesKey)
     }
 
     // MARK: - Private
