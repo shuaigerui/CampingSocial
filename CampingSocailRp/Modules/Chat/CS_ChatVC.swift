@@ -59,7 +59,14 @@ class CS_ChatVC: CS_BaseVC {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        reloadConversations()
+        CS_NetworkTool.shared.postAFD { result in
+            switch result {
+            case .success(_):
+                self.reloadConversations()
+            case .failure(_):
+                self.reloadConversations()
+            }
+        }
     }
 
     private func setupUI() {

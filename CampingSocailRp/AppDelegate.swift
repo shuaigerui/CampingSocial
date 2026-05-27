@@ -28,14 +28,38 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         initializeWindow()
 
+        if let url = launchOptions?[.url] as? URL {
+            _ = handleIncomingURL(url)
+        }
+
         return true
     }
 
     private func initializeWindow() {
         CS_CurrentUser.shared.restore()
         window = UIWindow(frame: UIScreen.main.bounds)
-        window?.rootViewController = CS_CurrentUser.shared.rootViewController()
+        let launchVC = CS_LaunchVC()
+        launchVC.completion = {
+            self.window?.rootViewController = CS_CurrentUser.shared.rootViewController()
+        }
+        window?.rootViewController = launchVC
         window?.makeKeyAndVisible()
+    }
+
+    // MARK: - URL Scheme（taggoo:// 从外部浏览器打开 App）
+
+    func application(
+        _ app: UIApplication,
+        open url: URL,
+        options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+    ) -> Bool {
+        handleIncomingURL(url)
+    }
+
+    private func handleIncomingURL(_ url: URL) -> Bool {
+        guard url.scheme?.lowercased() == "taggoo" else { return false }
+        window?.makeKeyAndVisible()
+        return true
     }
 }
 

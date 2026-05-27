@@ -337,11 +337,11 @@ extension CS_SetupInfoVC: UITextViewDelegate {
 
     func textView(
         _ textView: UITextView,
-        shouldInteractWith URL: URL,
+        shouldInteractWith url: URL,
         in characterRange: NSRange,
         interaction: UITextItemInteraction
     ) -> Bool {
-        if URL.absoluteString == "cs://sign-in" {
+        if url.absoluteString == "cs://sign-in" {
             openSignIn()
         }
         return false

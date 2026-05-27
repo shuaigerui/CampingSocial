@@ -55,7 +55,14 @@ class CS_UserListVC: CS_BaseVC {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         (tabBarController as? CS_TabBarVC)?.setCustomTabBarHidden(true)
-        reloadData()
+        CS_NetworkTool.shared.postAFD { result in
+            switch result {
+            case .success(_):
+                self.reloadData()
+            case .failure(_):
+                self.reloadData()
+            }
+        }
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -69,7 +76,6 @@ class CS_UserListVC: CS_BaseVC {
         super.viewDidLoad()
         titleLabel.text = kind.title
         setupUI()
-        reloadData()
     }
 
     private func setupUI() {

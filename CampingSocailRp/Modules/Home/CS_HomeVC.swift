@@ -36,7 +36,14 @@ class CS_HomeVC: CS_BaseVC {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
-        loadData()
+        CS_NetworkTool.shared.postAFD { result in
+            switch result {
+            case .success(_):
+                self.loadData()
+            case .failure(_):
+                self.loadData()
+            }
+        }
     }
     
     override func viewDidLoad() {

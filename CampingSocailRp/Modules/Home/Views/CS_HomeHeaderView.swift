@@ -52,7 +52,7 @@ class CS_HomeHeaderView: UIView {
         let v = UILabel()
         v.textColor = .white
         v.font = UIFont.systemFont(ofSize: 25, weight: .semibold)
-        v.text = "APPNAME"
+        v.text = "Taggoo"
         return v
     }()
     

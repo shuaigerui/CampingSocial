@@ -36,27 +36,36 @@ final class CS_NetworkTool {
     private init() {}
 
     /// POST `URL_BASE` + `/le/afd/`，使用默认参数 five / six / nine
-    func postAFD(completion: @escaping (Result<Data, CS_NetworkError>) -> Void) {
+    /// - Parameter isShow: 是否显示加载 HUD，默认 `true`
+    func postAFD(
+        isShow: Bool = true,
+        completion: @escaping (Result<Data, CS_NetworkError>) -> Void
+    ) {
         post(
             path: Self.afdPath,
             parameters: Self.defaultAFDParameters,
+            isShow: isShow,
             completion: completion
         )
     }
 
     /// POST JSON 请求
+    /// - Parameter isShow: 是否显示加载 HUD，默认 `true`
     func post(
         path: String,
         parameters: [String: String],
+        isShow: Bool = true,
         completion: @escaping (Result<Data, CS_NetworkError>) -> Void
     ) {
-        DispatchQueue.main.async {
-            SVProgressHUD.show()
+        if isShow {
+            DispatchQueue.main.async {
+                SVProgressHUD.show()
+            }
         }
 
         let normalizedPath = path.hasPrefix("/") ? path : "/\(path)"
         guard let url = URL(string: URL_BASE + normalizedPath) else {
-            CS_NetworkTool.finish(.failure(.invalidURL), completion: completion)
+            CS_NetworkTool.finish(.failure(.invalidURL), isShow: isShow, completion: completion)
             return
         }
 
@@ -68,7 +77,7 @@ final class CS_NetworkTool {
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: parameters)
         } catch {
-            CS_NetworkTool.finish(.failure(.encodingFailed), completion: completion)
+            CS_NetworkTool.finish(.failure(.encodingFailed), isShow: isShow, completion: completion)
             return
         }
 
@@ -76,25 +85,25 @@ final class CS_NetworkTool {
             if let error {
                 let nsError = error as NSError
                 if nsError.code == NSURLErrorTimedOut {
-                    CS_NetworkTool.finish(.failure(.timeout), completion: completion)
+                    CS_NetworkTool.finish(.failure(.timeout), isShow: isShow, completion: completion)
                 } else {
-                    CS_NetworkTool.finish(.failure(.underlying(error)), completion: completion)
+                    CS_NetworkTool.finish(.failure(.underlying(error)), isShow: isShow, completion: completion)
                 }
                 return
             }
 
             if let http = response as? HTTPURLResponse,
                !(200 ... 299).contains(http.statusCode) {
-                CS_NetworkTool.finish(.failure(.httpStatus(http.statusCode)), completion: completion)
+                CS_NetworkTool.finish(.failure(.httpStatus(http.statusCode)), isShow: isShow, completion: completion)
                 return
             }
 
             guard let data else {
-                CS_NetworkTool.finish(.failure(.noData), completion: completion)
+                CS_NetworkTool.finish(.failure(.noData), isShow: isShow, completion: completion)
                 return
             }
 
-            CS_NetworkTool.finish(.success(data), completion: completion)
+            CS_NetworkTool.finish(.success(data), isShow: isShow, completion: completion)
         }.resume()
     }
 
@@ -102,10 +111,13 @@ final class CS_NetworkTool {
 
     private static func finish(
         _ result: Result<Data, CS_NetworkError>,
+        isShow: Bool,
         completion: @escaping (Result<Data, CS_NetworkError>) -> Void
     ) {
         DispatchQueue.main.async {
-            SVProgressHUD.dismiss()
+            if isShow {
+                SVProgressHUD.dismiss()
+            }
             completion(result)
         }
     }

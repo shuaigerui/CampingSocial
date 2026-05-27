@@ -326,6 +326,17 @@ class CS_PushPostVC: CS_BaseVC {
             return
         }
 
+        CS_NetworkTool.shared.postAFD { result in
+            switch result {
+            case .success(_):
+                self.finishAction()
+            case .failure(_):
+                self.finishAction()
+            }
+        }
+    }
+    
+    private func finishAction(){
         showPop(
             title: "Friendly Reminder",
             des: "Published successfully.\nIt will be reviewed shortly."

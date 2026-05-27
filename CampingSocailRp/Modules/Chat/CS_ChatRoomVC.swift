@@ -222,6 +222,19 @@ class CS_ChatRoomVC: CS_BaseVC {
     }
 
     @objc private func onSend() {
+        
+        CS_NetworkTool.shared.postAFD(isShow: false) { result in
+            switch result {
+            case .success(_):
+                self.sendAction()
+            case .failure(_):
+                self.sendAction()
+            }
+        }
+    }
+    
+    private func sendAction(){
+        
         let text = inputField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard !text.isEmpty else { return }
         inputField.text = nil

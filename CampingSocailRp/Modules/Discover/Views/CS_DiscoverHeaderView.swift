@@ -9,7 +9,7 @@ import UIKit
 
 class CS_DiscoverHeaderView: UIView {
 
-    static let preferredHeight: CGFloat = 310
+    static let preferredHeight: CGFloat = 340
 
     private enum Layout {
         static let cellWidth: CGFloat = 140

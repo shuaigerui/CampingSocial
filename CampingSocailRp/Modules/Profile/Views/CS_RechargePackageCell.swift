@@ -42,7 +42,7 @@ final class CS_RechargePackageCell: UICollectionViewCell {
 
     private let cardView: UIView = {
         let v = UIView()
-        v.backgroundColor = UIColor(hex: "#F5F0DC")
+        v.backgroundColor = .white.withAlphaComponent(0.3)
         v.layer.cornerRadius = 16
         v.clipsToBounds = true
         return v
@@ -64,7 +64,7 @@ final class CS_RechargePackageCell: UICollectionViewCell {
 
     private let priceContainer: UIView = {
         let v = UIView()
-        v.backgroundColor = UIColor(hex: "#E6E2D0")
+        v.backgroundColor = .white.withAlphaComponent(0.5)
         v.layer.cornerRadius = 14
         v.clipsToBounds = true
         return v

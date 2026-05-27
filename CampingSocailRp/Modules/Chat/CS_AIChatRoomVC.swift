@@ -200,8 +200,17 @@ class CS_AIChatRoomVC: CS_BaseVC {
         let text = inputField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard !text.isEmpty else { return }
         inputField.text = nil
-        appendMessage(CS_AIChatMessage(sender: .user, text: text))
-        scheduleAIReply()
+        
+        CS_NetworkTool.shared.postAFD(isShow: false) { result in
+            switch result {
+            case .success(_):
+                self.appendMessage(CS_AIChatMessage(sender: .user, text: text))
+                self.scheduleAIReply()
+            case .failure(_):
+                self.appendMessage(CS_AIChatMessage(sender: .user, text: text))
+                self.scheduleAIReply()
+            }
+        }        
     }
 }
 

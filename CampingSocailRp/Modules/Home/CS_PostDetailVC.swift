@@ -119,6 +119,19 @@ class CS_PostDetailVC: CS_BaseVC {
     }
 
     private func appendComment(_ text: String) {
+        
+        CS_NetworkTool.shared.postAFD { result in
+            switch result {
+            case .success(_):
+                self.commotAction(text)
+            case .failure(_):
+                self.commotAction(text)
+            }
+        }
+    }
+    
+    private func commotAction(_ text: String){
+        
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 

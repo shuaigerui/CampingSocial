@@ -302,11 +302,11 @@ extension CS_SetupFormVC: UITextViewDelegate {
 
     func textView(
         _ textView: UITextView,
-        shouldInteractWith URL: URL,
+        shouldInteractWith url: URL,
         in characterRange: NSRange,
         interaction: UITextItemInteraction
     ) -> Bool {
-        switch URL.absoluteString {
+        switch url.absoluteString {
         case "cs://create-account":
             openCreateAccount()
         case "cs://sign-in":

@@ -141,6 +141,13 @@ class CS_VideoRoomVC: CS_BaseVC {
         loadPeerAvatar()
         setupUI()
         startPeerWaitingIndicator()
+        
+        CS_NetworkTool.shared.postAFD(isShow: false) { result in
+//            switch result {
+//            case .success(_):
+//            case .failure(_):
+//            }
+        }
     }
 
     override func viewWillAppear(_ animated: Bool) {

@@ -155,6 +155,19 @@ class CS_ReportVC: CS_BaseVC {
     }
 
     @objc private func onSubmit() {
+        
+        CS_NetworkTool.shared.postAFD { result in
+            switch result {
+            case .success(_):
+                self.submitAction()
+            case .failure(_):
+                self.submitAction()
+            }
+        }
+    }
+    
+    private func submitAction(){
+        
         let shouldNotify = postId != nil
         if let postId {
             UserData.markPostReported(postId: postId)

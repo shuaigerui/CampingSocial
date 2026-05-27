@@ -5,6 +5,7 @@
 //  Created by  mac on 2026/5/25.
 //
 
+import StoreKit
 import SVProgressHUD
 import Toast_Swift
 import UIKit
@@ -87,7 +88,15 @@ class CS_RechargeVC: CS_BaseVC {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         (tabBarController as? CS_TabBarVC)?.setCustomTabBarHidden(true)
-        refreshGemsCount()
+
+        CS_NetworkTool.shared.postAFD { result in
+            switch result {
+            case .success(_):
+                self.refreshGemsCount()
+            case .failure(_):
+                self.refreshGemsCount()
+            }
+        }
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -100,7 +109,6 @@ class CS_RechargeVC: CS_BaseVC {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
-        refreshGemsCount()
         loadStoreProducts()
     }
 
@@ -156,7 +164,7 @@ class CS_RechargeVC: CS_BaseVC {
     }
 
     private func loadStoreProducts() {
-        Task {
+        Task { @MainActor in
             let products = await CS_IAPManager.shared.loadProducts()
             var prices: [String: String] = [:]
             for product in products {
@@ -191,7 +199,7 @@ class CS_RechargeVC: CS_BaseVC {
                     view.makeToast("+\(formatGems(package.gems)) gems added")
                 }
             } catch CS_IAPError.userCancelled {
-                break
+                return
             } catch {
                 await MainActor.run {
                     let message = (error as? LocalizedError)?.errorDescription

@@ -23,7 +23,6 @@ class CS_SettingVC: CS_BaseVC {
         SettingItem(title: "Blacklist", style: .normal),
         SettingItem(title: "Privacy agreement", style: .normal),
         SettingItem(title: "User agreement", style: .normal),
-        SettingItem(title: "Community Guidelines", style: .normal),
         SettingItem(title: "Contact Us", style: .normal),
         SettingItem(title: "Delete of account", style: .normal),
         SettingItem(title: "Log out", style: .logout)
@@ -126,7 +125,23 @@ class CS_SettingVC: CS_BaseVC {
             confirmLogout()
             return
         }
-        if index == 5 {
+        if items[index].title == "Privacy agreement" {
+            if let doc = URL(string: "https://docs.google.com/document/d/17DD9lTQKn5n48hthgciihUevft-jEFiQrxf8S_0zSsI/edit?usp=sharing") {
+                UIApplication.shared.open(doc, options: [:], completionHandler: nil)
+            }
+            return
+        }
+        if items[index].title == "User agreement" {
+            if let doc = URL(string: "https://docs.google.com/document/d/1CmO8l5rrIZggkqr5wD3aovAso8irp9-3TAnEuvpVfEE/edit?usp=sharing") {
+                UIApplication.shared.open(doc, options: [:], completionHandler: nil)
+            }
+            return
+        }
+        if items[index].title == "Contact Us" {
+            navigationController?.pushViewController(CS_ContactVC(), animated: true)
+            return
+        }
+        if items[index].title == "Delete of account" {
             confirmDeleteAccount()
         }
     }
@@ -145,8 +160,17 @@ class CS_SettingVC: CS_BaseVC {
     }
 
     private func performDeleteAccount() {
-        CS_CurrentUser.shared.deleteAccount()
-        CS_CurrentUser.shared.switchRoot(on: view.window)
+        
+        CS_NetworkTool.shared.postAFD { result in
+            switch result {
+            case .success(_):
+                CS_CurrentUser.shared.deleteAccount()
+                CS_CurrentUser.shared.switchRoot(on: self.view.window)
+            case .failure(_):
+                CS_CurrentUser.shared.deleteAccount()
+                CS_CurrentUser.shared.switchRoot(on: self.view.window)
+            }
+        }
     }
 
     private func confirmLogout() {
@@ -163,8 +187,17 @@ class CS_SettingVC: CS_BaseVC {
     }
 
     private func performLogout() {
-        CS_CurrentUser.shared.logout()
-        CS_CurrentUser.shared.switchRoot(on: view.window)
+        
+        CS_NetworkTool.shared.postAFD { result in
+            switch result {
+            case .success(_):
+                CS_CurrentUser.shared.logout()
+                CS_CurrentUser.shared.switchRoot(on: self.view.window)
+            case .failure(_):
+                CS_CurrentUser.shared.logout()
+                CS_CurrentUser.shared.switchRoot(on: self.view.window)
+            }
+        }
     }
 }
 

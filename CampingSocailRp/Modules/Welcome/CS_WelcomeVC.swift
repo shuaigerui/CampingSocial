@@ -208,14 +208,20 @@ extension CS_WelcomeVC: UITextViewDelegate {
 
     func textView(
         _ textView: UITextView,
-        shouldInteractWith URL: URL,
+        shouldInteractWith url: URL,
         in characterRange: NSRange,
         interaction: UITextItemInteraction
     ) -> Bool {
-        switch URL.absoluteString {
+        switch url.absoluteString {
         case "cs://user-agreement":
+            if let doc = URL(string: "https://docs.google.com/document/d/1CmO8l5rrIZggkqr5wD3aovAso8irp9-3TAnEuvpVfEE/edit?usp=sharing") {
+                UIApplication.shared.open(doc, options: [:], completionHandler: nil)
+            }
             break
         case "cs://privacy-policy":
+            if let doc = URL(string: "https://docs.google.com/document/d/17DD9lTQKn5n48hthgciihUevft-jEFiQrxf8S_0zSsI/edit?usp=sharing") {
+                UIApplication.shared.open(doc, options: [:], completionHandler: nil)
+            }
             break
         default:
             break

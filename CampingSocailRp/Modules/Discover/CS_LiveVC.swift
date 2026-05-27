@@ -124,6 +124,13 @@ final class CS_LiveVC: CS_BaseVC {
         super.viewWillAppear(animated)
         (tabBarController as? CS_TabBarVC)?.setCustomTabBarHidden(true)
         queuePlayer?.play()
+        
+        CS_NetworkTool.shared.postAFD(isShow: false) { result in
+//            switch result {
+//            case .success(_):
+//            case .failure(_):
+//            }
+        }
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -325,6 +332,19 @@ final class CS_LiveVC: CS_BaseVC {
     }
 
     @objc private func onSend() {
+        
+        CS_NetworkTool.shared.postAFD(isShow: false) { result in
+            switch result {
+            case .success(_):
+                self.sendAction()
+            case .failure(_):
+                self.sendAction()
+            }
+        }
+    }
+    
+    private func sendAction(){
+        
         guard let text = inputField.text, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return
         }
